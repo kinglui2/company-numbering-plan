@@ -26,7 +26,7 @@ async function generateNumbers() {
         await db.query('DROP TABLE IF EXISTS phone_numbers');
         console.log('Phone numbers table dropped successfully');
 
-        // Create simplified phone_numbers table
+        // Create phone_numbers table with all required fields
         await db.query(`
             CREATE TABLE IF NOT EXISTS phone_numbers (
                 id INT PRIMARY KEY AUTO_INCREMENT,
@@ -35,14 +35,49 @@ async function generateNumbers() {
                 area_code VARCHAR(3) NOT NULL DEFAULT '20',
                 network_code VARCHAR(3) NOT NULL DEFAULT '790',
                 subscriber_number VARCHAR(4) NOT NULL,
+                is_golden BOOLEAN DEFAULT FALSE,
                 status ENUM('assigned', 'unassigned', 'cooloff') NOT NULL DEFAULT 'unassigned',
+                subscriber_name VARCHAR(255),
+                company_name VARCHAR(255),
+                assignment_date DATETIME,
+                gateway VARCHAR(10),
+                gateway_username VARCHAR(100),
+                assigned_by VARCHAR(100),
+                unassignment_date DATETIME,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_full_number (full_number),
-                INDEX idx_status (status)
+                INDEX idx_status (status),
+                INDEX idx_gateway (gateway),
+                INDEX idx_subscriber (subscriber_name),
+                INDEX idx_company (company_name)
             )
         `);
         console.log('Phone numbers table created successfully');
+
+        // Create number_history table
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS number_history (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                number_id INT NOT NULL,
+                previous_status ENUM('assigned', 'unassigned', 'cooloff'),
+                new_status ENUM('assigned', 'unassigned', 'cooloff'),
+                previous_subscriber VARCHAR(255),
+                new_subscriber VARCHAR(255),
+                previous_company VARCHAR(255),
+                new_company VARCHAR(255),
+                previous_gateway VARCHAR(10),
+                new_gateway VARCHAR(10),
+                previous_gateway_username VARCHAR(100),
+                new_gateway_username VARCHAR(100),
+                changed_by VARCHAR(100),
+                change_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (number_id) REFERENCES phone_numbers(id),
+                INDEX idx_number_id (number_id),
+                INDEX idx_change_date (change_date)
+            )
+        `);
+        console.log('Number history table created successfully');
 
         // Generate numbers from 0000 to 9999
         const numbers = [];
