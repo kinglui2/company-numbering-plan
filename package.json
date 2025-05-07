@@ -1,0 +1,22 @@
+{
+  "name": "numbering-plan-management",
+  "version": "1.0.0",
+  "description": "Numbering Plan Management System for managing SIP trunk/DID phone numbers",
+  "scripts": {
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "cd backend && npm start",
+    "start:frontend": "cd frontend && npm start",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": [
+    "numbering-plan",
+    "sip-trunk",
+    "did",
+    "phone-numbers"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+} 
