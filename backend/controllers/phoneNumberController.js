@@ -3,9 +3,27 @@ const PhoneNumber = require('../models/phoneNumber');
 // Get all phone numbers
 exports.getAllNumbers = async (req, res) => {
     try {
-        const numbers = await PhoneNumber.getAll();
-        res.json(numbers);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 15;
+        const availableOnly = req.query.available === 'true';
+
+        // Get total count
+        const totalCount = await PhoneNumber.getCount(availableOnly);
+        
+        // Get paginated numbers
+        const numbers = await PhoneNumber.getAll(page, limit, availableOnly);
+        
+        res.json({
+            numbers: numbers,
+            pagination: {
+                total: totalCount,
+                page: page,
+                limit: limit,
+                totalPages: Math.ceil(totalCount / limit)
+            }
+        });
     } catch (error) {
+        console.error('Error fetching numbers:', error);
         res.status(500).json({ message: error.message });
     }
 };

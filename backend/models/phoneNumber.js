@@ -1,11 +1,39 @@
 const db = require('../config/db');
 
 class PhoneNumber {
-    // Get all phone numbers
-    static async getAll() {
+    // Get all phone numbers with pagination
+    static async getAll(page = 1, limit = 10, availableOnly = false) {
         try {
-            const [rows] = await db.query('SELECT * FROM phone_numbers');
+            const offset = (page - 1) * limit;
+            let query = 'SELECT * FROM phone_numbers';
+            let params = [];
+
+            if (availableOnly) {
+                query += ' WHERE status = "available"';
+            }
+
+            query += ' ORDER BY full_number LIMIT ? OFFSET ?';
+            params.push(limit, offset);
+
+            const [rows] = await db.query(query, params);
             return rows;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Get total count of numbers
+    static async getCount(availableOnly = false) {
+        try {
+            let query = 'SELECT COUNT(*) as total FROM phone_numbers';
+            let params = [];
+
+            if (availableOnly) {
+                query += ' WHERE status = "available"';
+            }
+
+            const [rows] = await db.query(query, params);
+            return rows[0].total;
         } catch (error) {
             throw error;
         }

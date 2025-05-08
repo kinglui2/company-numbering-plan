@@ -83,7 +83,7 @@ async function generateNumbers() {
         const numbers = [];
         for (let i = 0; i <= 9999; i++) {
             const subscriberNumber = i.toString().padStart(4, '0');
-            const fullNumber = `020790${subscriberNumber}`;
+            const fullNumber = `25420790${subscriberNumber}`;
             numbers.push([fullNumber, subscriberNumber]);
         }
 
