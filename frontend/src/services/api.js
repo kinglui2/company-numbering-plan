@@ -3,7 +3,7 @@ import axios from 'axios';
 const API_URL = 'http://localhost:5000/api';
 
 export const phoneNumberService = {
-    getAllNumbers: async (page = 1, limit = 10, availableOnly = false) => {
+    getAllNumbers: async (page = 1, limit = 15, availableOnly = false) => {
         const response = await axios.get(`${API_URL}/phone-numbers`, {
             params: { page, limit, available: availableOnly }
         });
@@ -12,6 +12,11 @@ export const phoneNumberService = {
 
     getNumberById: async (id) => {
         const response = await axios.get(`${API_URL}/phone-numbers/${id}`);
+        return response.data;
+    },
+
+    getCooloffNumbers: async () => {
+        const response = await axios.get(`${API_URL}/phone-numbers/cooloff`);
         return response.data;
     },
 

@@ -1,0 +1,32 @@
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    margin-left: 250px;
+    padding: 2rem;
+    background-color: #f8fafc;
+    transition: margin-left 0.3s ease;
+}
+
+/* When sidebar is collapsed */
+.sidebar.collapsed + .main-content {
+    margin-left: 60px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 60px;
+    }
+
+    .sidebar {
+        width: 60px;
+    }
+
+    .sidebar.expanded {
+        width: 250px;
+    }
+} 

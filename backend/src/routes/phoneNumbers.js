@@ -8,6 +8,9 @@ router.get('/', phoneNumberController.getAllNumbers);
 // Get available numbers
 router.get('/available', phoneNumberController.getAvailableNumbers);
 
+// Get cooloff numbers
+router.get('/cooloff', phoneNumberController.getCooloffNumbers);
+
 // Get a specific number
 router.get('/:id', phoneNumberController.getNumberById);
 

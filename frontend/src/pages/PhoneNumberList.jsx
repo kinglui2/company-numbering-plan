@@ -36,11 +36,32 @@ function PhoneNumberList({ availableOnly = false }) {
     };
 
     useEffect(() => {
+        setCurrentPage(1); // Reset to first page when filters change
+        fetchNumbers(1);
+    }, [availableOnly]);
+
+    useEffect(() => {
         fetchNumbers(currentPage);
-    }, [currentPage, availableOnly]);
+    }, [currentPage]);
 
     const handlePageChange = (newPage) => {
         setCurrentPage(newPage);
+    };
+
+    const getStatusBadge = (number) => {
+        if (number.effective_status === 'available') {
+            return <span className="badge badge-success">Available</span>;
+        } else if (number.status === 'cooloff') {
+            const unassignedDate = new Date(number.unassigned_date);
+            const daysRemaining = Math.max(0, 90 - Math.floor((new Date() - unassignedDate) / (1000 * 60 * 60 * 24)));
+            return (
+                <span className="badge badge-warning">
+                    Cooloff ({daysRemaining} days)
+                </span>
+            );
+        } else {
+            return <span className={`badge badge-${number.status}`}>{number.status}</span>;
+        }
     };
 
     if (loading) {
@@ -71,11 +92,7 @@ function PhoneNumberList({ availableOnly = false }) {
                                 numbers.map(number => (
                                     <tr key={number.id}>
                                         <td>{number.full_number}</td>
-                                        <td>
-                                            <span className={`badge badge-${number.status}`}>
-                                                {number.status}
-                                            </span>
-                                        </td>
+                                        <td>{getStatusBadge(number)}</td>
                                         <td>{number.company_name || '-'}</td>
                                         <td>{number.subscriber_name || '-'}</td>
                                         <td>

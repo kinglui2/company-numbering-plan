@@ -1,8 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-
 const phoneNumberRoutes = require('./routes/phoneNumbers');
+const authRoutes = require('./routes/auth');
+require('./cron/updateCooloff');
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/phone-numbers', phoneNumberRoutes);
 
 // Error handling middleware
