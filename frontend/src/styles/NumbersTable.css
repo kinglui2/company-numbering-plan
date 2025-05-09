@@ -1,0 +1,251 @@
+.numbers-table-container {
+    height: calc(100vh - 64px); /* Account for the header height */
+    width: 100%;
+    padding: 20px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Prevent page scrolling */
+}
+
+/* Table styles */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.data-table th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+}
+
+/* Status cell styling */
+.status-cell {
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.status-active {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.status-inactive {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.status-pending {
+    background-color: #fff3e0;
+    color: #ef6c00;
+}
+
+.golden-cell {
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.golden-cell.golden {
+    background-color: #fff8e1;
+    color: #ff8f00;
+}
+
+.golden-cell.regular {
+    background-color: #f5f5f5;
+    color: #757575;
+}
+
+.gateway-cell {
+    font-weight: 500;
+    color: #1976d2;
+}
+
+.subscriber-cell, .company-cell {
+    font-weight: 500;
+}
+
+/* Action buttons styling */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.action-button {
+    transition: all 0.2s ease;
+}
+
+.action-button:hover {
+    transform: scale(1.1);
+}
+
+.view-button {
+    color: #1976d2;
+}
+
+.edit-button {
+    color: #ed6c02;
+}
+
+/* MUI Pagination Actions */
+.MuiTablePagination-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.MuiTablePagination-actions button {
+    cursor: pointer !important;
+    padding: 8px;
+    border: none;
+    background: none;
+    color: #666;
+    transition: color 0.2s;
+}
+
+.MuiTablePagination-actions button:hover {
+    color: #1976d2;
+}
+
+.MuiTablePagination-actions button:disabled {
+    color: #ccc;
+    cursor: not-allowed !important;
+}
+
+/* Pagination container */
+.pagination-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 0;
+    background: white;
+    border-top: 1px solid #e0e0e0;
+    margin-top: auto;
+}
+
+.pagination-info {
+    color: #666;
+    font-size: 0.875rem;
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.pagination-button {
+    padding: 8px;
+    border: none;
+    background: none;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pagination-button:hover:not(:disabled) {
+    color: #1976d2;
+}
+
+.pagination-button:disabled {
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Page size selector */
+.page-size-selector {
+    margin-left: 16px;
+    padding: 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background: white;
+    color: #666;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .data-table th,
+    .data-table td {
+        padding: 8px;
+    }
+}
+
+@media (max-width: 992px) {
+    .pagination-container {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .pagination-info {
+        margin-right: 0;
+    }
+    
+    .page-size-selector {
+        margin-left: 0;
+    }
+
+    .MuiTablePagination-actions {
+        gap: 4px;
+    }
+    
+    .MuiTablePagination-actions button {
+        padding: 4px;
+    }
+}
+
+/* DataGrid custom styles */
+.MuiDataGrid-root {
+    border: none !important;
+    flex: 1;
+    min-height: 0; /* Ensure the grid takes remaining space */
+}
+
+.MuiDataGrid-virtualScroller {
+    overflow-y: auto !important; /* Keep table scrolling */
+}
+
+.MuiDataGrid-cell {
+    border-bottom: 1px solid #f0f0f0 !important;
+}
+
+.MuiDataGrid-columnHeaders {
+    background-color: #fafafa;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.MuiDataGrid-columnHeader {
+    font-weight: 600 !important;
+}
+
+.MuiDataGrid-row:hover {
+    background-color: #f5f5f5 !important;
+}
+
+.MuiDataGrid-footerContainer {
+    border-top: 1px solid #f0f0f0;
+    padding: 8px 0;
+}
+
+.number-cell {
+    font-family: 'Roboto Mono', monospace;
+    font-weight: 500;
+}
+
