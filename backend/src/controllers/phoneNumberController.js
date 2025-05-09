@@ -7,11 +7,56 @@ const phoneNumberController = {
     async getAllNumbers(req, res) {
         try {
             const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 15;
-            const availableOnly = req.query.available === 'true';
+            const limit = parseInt(req.query.limit) || 100;
+            const offset = (page - 1) * limit;
 
-            const result = await PhoneNumber.getAll(page, limit, availableOnly);
-            res.json(result);
+            // Build the WHERE clause based on filters
+            let whereClause = '';
+            const params = [];
+            
+            // Handle status filter
+            if (req.query.status) {
+                whereClause += ' AND status = ?';
+                params.push(req.query.status);
+            }
+
+            // Handle gateway filter
+            if (req.query.gateway) {
+                whereClause += ' AND gateway = ?';
+                params.push(req.query.gateway);
+            }
+
+            // Handle full number search
+            if (req.query.full_number) {
+                whereClause += ' AND full_number LIKE ?';
+                params.push(`%${req.query.full_number}%`);
+            }
+
+            // Get total count
+            const [countResult] = await pool.query(
+                `SELECT COUNT(*) as total FROM phone_numbers WHERE 1=1 ${whereClause}`,
+                params
+            );
+            const total = countResult[0].total;
+
+            // Get paginated data
+            const [numbers] = await pool.query(
+                `SELECT * FROM phone_numbers 
+                WHERE 1=1 ${whereClause}
+                ORDER BY full_number
+                LIMIT ? OFFSET ?`,
+                [...params, limit, offset]
+            );
+
+            res.json({
+                numbers,
+                pagination: {
+                    total,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(total / limit)
+                }
+            });
         } catch (error) {
             console.error('Error fetching numbers:', error);
             res.status(500).json({ error: 'Failed to fetch numbers' });
