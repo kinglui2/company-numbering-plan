@@ -4,6 +4,10 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import ManagerDashboard from './pages/ManagerDashboard';
 import AllNumbers from './pages/AllNumbers';
+import AvailableNumbers from './pages/AvailableNumbers';
+import CooloffNumbers from './pages/CooloffNumbers';
+import AssignedNumbers from './pages/AssignedNumbers';
+import MissingData from './pages/MissingData';
 import './styles/main.css';
 import './styles/layout.css';
 
@@ -17,7 +21,13 @@ function App() {
                     {/* Protected routes */}
                     <Route path="/" element={<Layout><ManagerDashboard /></Layout>} />
                     <Route path="/dashboard" element={<Layout><ManagerDashboard /></Layout>} />
+                    
+                    {/* Number management routes */}
                     <Route path="/numbers/all" element={<Layout><AllNumbers /></Layout>} />
+                    <Route path="/numbers/available" element={<Layout><AvailableNumbers /></Layout>} />
+                    <Route path="/numbers/cooloff" element={<Layout><CooloffNumbers /></Layout>} />
+                    <Route path="/numbers/assigned" element={<Layout><AssignedNumbers /></Layout>} />
+                    <Route path="/numbers/missing" element={<Layout><MissingData /></Layout>} />
                     
                     {/* Catch all route */}
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />

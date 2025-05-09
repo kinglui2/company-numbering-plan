@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
+const phoneNumberRoutes = require('./routes/phoneNumbers');
+const pool = require('./config/database');
+require('./cron/updateCooloff');
 
 // Load environment variables
 dotenv.config();
@@ -11,9 +14,22 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Test database connection
+pool.getConnection()
+    .then(connection => {
+        console.log('Database connected successfully');
+        connection.release();
+    })
+    .catch(err => {
+        console.error('Error connecting to the database:', err);
+        process.exit(1);
+    });
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/phone-numbers', phoneNumberRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

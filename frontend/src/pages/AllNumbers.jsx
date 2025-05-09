@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { phoneNumberService } from '../services/api';
 import '../styles/numbers.css';
 
 function AllNumbers() {
@@ -11,18 +12,8 @@ function AllNumbers() {
     useEffect(() => {
         const fetchNumbers = async () => {
             try {
-                const response = await fetch('/api/numbers', {
-                    headers: {
-                        'Authorization': `Bearer ${user.token}`
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to fetch numbers');
-                }
-
-                const data = await response.json();
-                setNumbers(data);
+                const data = await phoneNumberService.getAllNumbers();
+                setNumbers(data.numbers || []);
             } catch (err) {
                 setError(err.message);
             } finally {
@@ -31,7 +22,7 @@ function AllNumbers() {
         };
 
         fetchNumbers();
-    }, [user.token]);
+    }, []);
 
     if (loading) {
         return <div>Loading...</div>;
@@ -47,11 +38,13 @@ function AllNumbers() {
             <div className="numbers-grid">
                 {numbers.map((number) => (
                     <div key={number.id} className="number-card">
-                        <h3>{number.number}</h3>
+                        <h3>{number.full_number}</h3>
                         <p>Status: {number.status}</p>
-                        <p>Type: {number.type}</p>
-                        {number.assignedTo && (
-                            <p>Assigned to: {number.assignedTo}</p>
+                        {number.company_name && (
+                            <p>Company: {number.company_name}</p>
+                        )}
+                        {number.subscriber_name && (
+                            <p>Subscriber: {number.subscriber_name}</p>
                         )}
                     </div>
                 ))}

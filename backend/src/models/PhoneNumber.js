@@ -19,29 +19,32 @@ class PhoneNumber {
     static async create(numberData) {
         const {
             full_number,
-            national_code,
-            area_code,
-            network_code,
+            national_code = '254',
+            area_code = '20',
+            network_code = '790',
             subscriber_number,
-            is_golden,
-            status,
+            is_golden = false,
+            status = 'unassigned',
             subscriber_name,
             company_name,
             gateway,
             gateway_username,
-            assignment_date
+            assignment_date,
+            assigned_by
         } = numberData;
 
         const [result] = await db.query(
             `INSERT INTO phone_numbers (
                 full_number, national_code, area_code, network_code, 
                 subscriber_number, is_golden, status, subscriber_name,
-                company_name, gateway, gateway_username, assignment_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                company_name, gateway, gateway_username, assignment_date,
+                assigned_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 full_number, national_code, area_code, network_code,
                 subscriber_number, is_golden, status, subscriber_name,
-                company_name, gateway, gateway_username, assignment_date
+                company_name, gateway, gateway_username, assignment_date,
+                assigned_by
             ]
         );
 
@@ -69,12 +72,12 @@ class PhoneNumber {
 
         if (unassignmentData) {
             updateFields.push(
-                'unassigned_date = ?',
+                'unassignment_date = ?',
                 'previous_company = ?',
                 'previous_assignment_notes = ?'
             );
             values.unshift(
-                unassignmentData.unassigned_date,
+                unassignmentData.unassignment_date,
                 unassignmentData.previous_company,
                 unassignmentData.previous_assignment_notes
             );
@@ -92,7 +95,7 @@ class PhoneNumber {
         const [rows] = await db.query(
             `SELECT * FROM phone_numbers 
             WHERE status = 'unassigned' 
-            OR (status = 'cooloff' AND unassigned_date < DATE_SUB(NOW(), INTERVAL 90 DAY))`
+            OR (status = 'cooloff' AND unassignment_date < DATE_SUB(NOW(), INTERVAL 90 DAY))`
         );
         return rows;
     }
@@ -102,31 +105,21 @@ class PhoneNumber {
         try {
             const offset = (page - 1) * limit;
             let query = `
-                SELECT p.*, 
-                    CASE 
-                        WHEN c.unassigned_date IS NOT NULL 
-                        AND c.unassigned_date < DATE_SUB(NOW(), INTERVAL 90 DAY) 
-                        THEN 'available'
-                        ELSE p.status 
-                    END as effective_status
-                FROM phone_numbers p
-                LEFT JOIN cooloff_numbers c ON p.id = c.phone_number_id
+                SELECT * FROM phone_numbers
             `;
             let countQuery = `
-                SELECT COUNT(*) as total 
-                FROM phone_numbers p
-                LEFT JOIN cooloff_numbers c ON p.id = c.phone_number_id
+                SELECT COUNT(*) as total FROM phone_numbers
             `;
             let params = [];
 
             if (availableOnly) {
-                query += ` WHERE (p.status = 'available' OR 
-                    (p.status = 'cooloff' AND c.unassigned_date < DATE_SUB(NOW(), INTERVAL 90 DAY)))`;
-                countQuery += ` WHERE (p.status = 'available' OR 
-                    (p.status = 'cooloff' AND c.unassigned_date < DATE_SUB(NOW(), INTERVAL 90 DAY)))`;
+                query += ` WHERE status = 'unassigned' OR 
+                    (status = 'cooloff' AND unassignment_date < DATE_SUB(NOW(), INTERVAL 90 DAY))`;
+                countQuery += ` WHERE status = 'unassigned' OR 
+                    (status = 'cooloff' AND unassignment_date < DATE_SUB(NOW(), INTERVAL 90 DAY))`;
             }
 
-            query += ' ORDER BY p.full_number LIMIT ? OFFSET ?';
+            query += ' ORDER BY full_number LIMIT ? OFFSET ?';
             params.push(limit, offset);
 
             const [rows] = await db.query(query, params);
@@ -143,6 +136,7 @@ class PhoneNumber {
                 }
             };
         } catch (error) {
+            console.error('Error in getAll:', error);
             throw error;
         }
     }
@@ -166,7 +160,7 @@ class PhoneNumber {
             // Insert into cooloff_numbers
             await connection.query(
                 `INSERT INTO cooloff_numbers 
-                (phone_number_id, unassigned_date, previous_subscriber, previous_company, previous_gateway)
+                (number_id, unassignment_date, previous_subscriber, previous_company, previous_gateway)
                 VALUES (?, NOW(), ?, ?, ?)`,
                 [id, number[0].subscriber_name, number[0].company_name, number[0].gateway]
             );
@@ -178,7 +172,8 @@ class PhoneNumber {
                     subscriber_name = NULL,
                     company_name = NULL,
                     gateway = NULL,
-                    assignment_date = NULL
+                    assignment_date = NULL,
+                    unassignment_date = NOW()
                 WHERE id = ?`,
                 [id]
             );
@@ -206,10 +201,10 @@ class PhoneNumber {
         try {
             const [rows] = await db.query(`
                 UPDATE phone_numbers p
-                JOIN cooloff_numbers c ON p.id = c.phone_number_id
+                JOIN cooloff_numbers c ON p.id = c.number_id
                 SET p.status = 'available'
                 WHERE p.status = 'cooloff'
-                AND c.unassigned_date < DATE_SUB(NOW(), INTERVAL 90 DAY)
+                AND c.unassignment_date < DATE_SUB(NOW(), INTERVAL 90 DAY)
             `);
             return rows.affectedRows;
         } catch (error) {
@@ -221,11 +216,11 @@ class PhoneNumber {
     static async getCooloffNumbers() {
         try {
             const [rows] = await db.query(`
-                SELECT p.*, c.unassigned_date, c.previous_subscriber, c.previous_company, c.previous_gateway
+                SELECT p.*, c.unassignment_date, c.previous_subscriber, c.previous_company, c.previous_gateway
                 FROM phone_numbers p
-                JOIN cooloff_numbers c ON p.id = c.phone_number_id
+                JOIN cooloff_numbers c ON p.id = c.number_id
                 WHERE p.status = 'cooloff'
-                ORDER BY c.unassigned_date DESC
+                ORDER BY c.unassignment_date DESC
             `);
             return rows;
         } catch (error) {

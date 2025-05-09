@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const phoneNumberRoutes = require('./routes/phoneNumbers');
 const authRoutes = require('./routes/auth');
+const pool = require('./config/database');
 require('./cron/updateCooloff');
 
 const app = express();
@@ -11,6 +12,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Test database connection
+pool.getConnection()
+    .then(connection => {
+        console.log('Database connected successfully');
+        connection.release();
+    })
+    .catch(err => {
+        console.error('Error connecting to the database:', err);
+        process.exit(1);
+    });
 
 // Routes
 app.use('/api/auth', authRoutes);

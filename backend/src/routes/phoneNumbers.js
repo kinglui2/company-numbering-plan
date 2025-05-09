@@ -2,17 +2,14 @@ const express = require('express');
 const router = express.Router();
 const phoneNumberController = require('../controllers/phoneNumberController');
 
-// Get all phone numbers
+// Get all phone numbers with pagination
 router.get('/', phoneNumberController.getAllNumbers);
 
-// Get available numbers
-router.get('/available', phoneNumberController.getAvailableNumbers);
+// Get phone number by ID
+router.get('/:id', phoneNumberController.getNumberById);
 
 // Get cooloff numbers
 router.get('/cooloff', phoneNumberController.getCooloffNumbers);
-
-// Get a specific number
-router.get('/:id', phoneNumberController.getNumberById);
 
 // Assign a number
 router.post('/:id/assign', phoneNumberController.assignNumber);

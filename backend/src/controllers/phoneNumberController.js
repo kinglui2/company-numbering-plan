@@ -4,28 +4,33 @@ const pool = require('../config/database');
 
 const phoneNumberController = {
     // Get all numbers with pagination
-    getAllNumbers: async (req, res) => {
+    async getAllNumbers(req, res) {
         try {
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 15;
             const availableOnly = req.query.available === 'true';
 
-            // First, update any numbers that have completed their cooloff period
-            await PhoneNumber.updateCooloffStatus();
-
             const result = await PhoneNumber.getAll(page, limit, availableOnly);
             res.json(result);
         } catch (error) {
             console.error('Error fetching numbers:', error);
-            res.status(500).json({ error: 'Failed to fetch phone numbers' });
+            res.status(500).json({ error: 'Failed to fetch numbers' });
         }
     },
 
     // Get cooloff numbers
-    getCooloffNumbers: async (req, res) => {
+    async getCooloffNumbers(req, res) {
         try {
             const numbers = await PhoneNumber.getCooloffNumbers();
-            res.json(numbers);
+            res.json({
+                numbers,
+                pagination: {
+                    total: numbers.length,
+                    page: 1,
+                    limit: numbers.length,
+                    totalPages: 1
+                }
+            });
         } catch (error) {
             console.error('Error fetching cooloff numbers:', error);
             res.status(500).json({ error: 'Failed to fetch cooloff numbers' });
@@ -61,45 +66,19 @@ const phoneNumberController = {
     async assignNumber(req, res) {
         try {
             const { id } = req.params;
-            const {
-                subscriber_name,
-                company_name,
-                gateway,
-                gateway_username
-            } = req.body;
-
-            const number = await PhoneNumber.findById(id);
-            if (!number) {
-                return res.status(404).json({ error: 'Phone number not found' });
-            }
-
-            // Check if number is available for assignment
-            if (number.status !== 'available' && 
-                !(number.status === 'cooloff' && 
-                  new Date(number.unassigned_date) < new Date(Date.now() - 90 * 24 * 60 * 60 * 1000))) {
-                return res.status(400).json({ error: 'Number is not available for assignment' });
-            }
-
             const updateData = {
+                ...req.body,
                 status: 'assigned',
-                subscriber_name,
-                company_name,
-                gateway,
-                gateway_username,
                 assignment_date: new Date()
             };
 
-            await PhoneNumber.update(id, updateData);
+            const success = await PhoneNumber.update(id, updateData);
+            if (!success) {
+                return res.status(404).json({ error: 'Phone number not found' });
+            }
 
-            // Record in history
-            await NumberHistory.create({
-                number_id: id,
-                change_type: 'assignment',
-                old_value: JSON.stringify(number),
-                new_value: JSON.stringify(updateData)
-            });
-
-            res.json({ message: 'Number assigned successfully' });
+            const updatedNumber = await PhoneNumber.findById(id);
+            res.json(updatedNumber);
         } catch (error) {
             console.error('Error assigning number:', error);
             res.status(500).json({ error: 'Failed to assign number' });
@@ -110,23 +89,13 @@ const phoneNumberController = {
     async unassignNumber(req, res) {
         try {
             const { id } = req.params;
-            const { notes } = req.body;
-
-            const number = await PhoneNumber.findById(id);
-            if (!number) {
+            const success = await PhoneNumber.unassign(id, req.body);
+            if (!success) {
                 return res.status(404).json({ error: 'Phone number not found' });
             }
 
-            if (number.status !== 'assigned') {
-                return res.status(400).json({ error: 'Number is not currently assigned' });
-            }
-
-            const success = await PhoneNumber.unassign(id, { notes });
-            if (!success) {
-                return res.status(500).json({ error: 'Failed to unassign number' });
-            }
-
-            res.json({ message: 'Number unassigned successfully' });
+            const updatedNumber = await PhoneNumber.findById(id);
+            res.json(updatedNumber);
         } catch (error) {
             console.error('Error unassigning number:', error);
             res.status(500).json({ error: 'Failed to unassign number' });
