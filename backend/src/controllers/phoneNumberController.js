@@ -145,6 +145,25 @@ const phoneNumberController = {
             console.error('Error unassigning number:', error);
             res.status(500).json({ error: 'Failed to unassign number' });
         }
+    },
+
+    // Get dashboard stats
+    async getDashboardStats(req, res) {
+        try {
+            const [stats] = await pool.query(`
+                SELECT 
+                    COUNT(*) as totalNumbers,
+                    SUM(CASE WHEN status = 'assigned' THEN 1 ELSE 0 END) as assignedNumbers,
+                    SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) as availableNumbers,
+                    SUM(CASE WHEN status = 'cooloff' THEN 1 ELSE 0 END) as cooloffNumbers
+                FROM phone_numbers
+            `);
+
+            res.json(stats[0]);
+        } catch (error) {
+            console.error('Error fetching dashboard stats:', error);
+            res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+        }
     }
 };
 

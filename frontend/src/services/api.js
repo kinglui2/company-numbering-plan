@@ -40,5 +40,15 @@ export const phoneNumberService = {
     unassignNumber: async (id, data) => {
         const response = await axios.post(`${API_URL}/phone-numbers/${id}/unassign`, data);
         return response.data;
+    },
+
+    getDashboardStats: async () => {
+        try {
+            const response = await axios.get(`${API_URL}/phone-numbers/stats`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching dashboard stats:', error);
+            throw error;
+        }
     }
 }; 
