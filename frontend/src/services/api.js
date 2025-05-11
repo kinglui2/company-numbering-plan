@@ -50,5 +50,24 @@ export const phoneNumberService = {
             console.error('Error fetching dashboard stats:', error);
             throw error;
         }
+    },
+
+    getAvailableNumbers: async (page = 1, limit = 100, filters = {}) => {
+        try {
+            let url = `${API_URL}/phone-numbers/available?page=${page}&limit=${limit}`;
+            
+            // Add filters if they exist
+            if (filters.items && filters.items.length > 0) {
+                filters.items.forEach(filter => {
+                    url += `&${filter.columnField}=${filter.value}`;
+                });
+            }
+
+            const response = await axios.get(url);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching available numbers:', error);
+            throw error;
+        }
     }
 }; 

@@ -11,6 +11,9 @@ router.get('/stats', phoneNumberController.getDashboardStats);
 // Get cooloff numbers
 router.get('/cooloff', phoneNumberController.getCooloffNumbers);
 
+// Get available numbers
+router.get('/available', phoneNumberController.getAvailableNumbers);
+
 // Get phone number by ID
 router.get('/:id', phoneNumberController.getNumberById);
 

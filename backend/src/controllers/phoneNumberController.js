@@ -66,19 +66,25 @@ const phoneNumberController = {
     // Get cooloff numbers
     async getCooloffNumbers(req, res) {
         try {
-            const numbers = await PhoneNumber.getCooloffNumbers();
-            res.json({
-                numbers,
-                pagination: {
-                    total: numbers.length,
-                    page: 1,
-                    limit: numbers.length,
-                    totalPages: 1
-                }
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 100;
+            
+            console.log('Fetching cooloff numbers with params:', { page, limit });
+            
+            const result = await PhoneNumber.getCooloffNumbers(page, limit);
+            console.log('Cooloff numbers result:', { 
+                total: result.pagination.total,
+                page: result.pagination.page,
+                count: result.numbers.length 
             });
+            
+            res.json(result);
         } catch (error) {
-            console.error('Error fetching cooloff numbers:', error);
-            res.status(500).json({ error: 'Failed to fetch cooloff numbers' });
+            console.error('Error in getCooloffNumbers:', error);
+            res.status(500).json({ 
+                error: 'Failed to fetch cooloff numbers',
+                details: error.message
+            });
         }
     },
 
@@ -99,11 +105,76 @@ const phoneNumberController = {
     // Get available numbers (unassigned or out of cooloff)
     async getAvailableNumbers(req, res) {
         try {
-            const numbers = await PhoneNumber.findAvailable();
-            res.json(numbers);
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 100;
+            const offset = (page - 1) * limit;
+
+            // Get total count of available numbers
+            const countQuery = `
+                SELECT COUNT(*) as total 
+                FROM phone_numbers 
+                WHERE status = 'unassigned' 
+                AND (
+                    unassignment_date IS NULL 
+                    OR unassignment_date <= DATE_SUB(NOW(), INTERVAL 90 DAY)
+                )
+            `;
+
+            const [countResult] = await pool.query(countQuery);
+            const total = countResult[0].total;
+
+            // Get paginated available numbers with formatted full_number
+            const numbersQuery = `
+                SELECT 
+                    id,
+                    CONCAT(
+                        national_code,
+                        area_code,
+                        network_code,
+                        LPAD(subscriber_number, 4, '0')
+                    ) as full_number,
+                    status,
+                    is_golden,
+                    gateway,
+                    assignment_date,
+                    unassignment_date,
+                    CASE 
+                        WHEN unassignment_date IS NULL THEN 'Never Assigned'
+                        ELSE CONCAT(DATEDIFF(NOW(), unassignment_date), ' days since unassignment')
+                    END as assignment_status
+                FROM phone_numbers 
+                WHERE status = 'unassigned' 
+                AND (
+                    unassignment_date IS NULL 
+                    OR unassignment_date <= DATE_SUB(NOW(), INTERVAL 90 DAY)
+                )
+                ORDER BY 
+                    CASE 
+                        WHEN unassignment_date IS NULL THEN 0 
+                        ELSE 1 
+                    END,
+                    full_number
+                LIMIT ? OFFSET ?
+            `;
+
+            const [numbers] = await pool.query(numbersQuery, [limit, offset]);
+
+            res.json({
+                numbers,
+                total_count: total,
+                pagination: {
+                    total,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(total / limit)
+                }
+            });
         } catch (error) {
             console.error('Error fetching available numbers:', error);
-            res.status(500).json({ error: 'Failed to fetch available numbers' });
+            res.status(500).json({ 
+                error: 'Failed to fetch available numbers',
+                details: error.message
+            });
         }
     },
 
@@ -154,7 +225,7 @@ const phoneNumberController = {
                 SELECT 
                     COUNT(*) as totalNumbers,
                     SUM(CASE WHEN status = 'assigned' THEN 1 ELSE 0 END) as assignedNumbers,
-                    SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) as availableNumbers,
+                    SUM(CASE WHEN status = 'unassigned' THEN 1 ELSE 0 END) as availableNumbers,
                     SUM(CASE WHEN status = 'cooloff' THEN 1 ELSE 0 END) as cooloffNumbers
                 FROM phone_numbers
             `);

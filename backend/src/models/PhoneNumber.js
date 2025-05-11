@@ -196,33 +196,84 @@ class PhoneNumber {
         }
     }
 
-    // Check and update cooloff numbers
-    static async updateCooloffStatus() {
+    // Get cooloff numbers with pagination
+    static async getCooloffNumbers(page = 1, limit = 100) {
         try {
-            const [rows] = await db.query(`
-                UPDATE phone_numbers p
-                JOIN cooloff_numbers c ON p.id = c.number_id
-                SET p.status = 'available'
+            const offset = (page - 1) * limit;
+
+            // Get total count
+            const [countResult] = await db.query(`
+                SELECT COUNT(*) as total 
+                FROM phone_numbers p
                 WHERE p.status = 'cooloff'
-                AND c.unassignment_date < DATE_SUB(NOW(), INTERVAL 90 DAY)
+                AND DATE_ADD(p.unassignment_date, INTERVAL 90 DAY) >= NOW()
             `);
-            return rows.affectedRows;
+            const total = countResult[0].total;
+
+            // Get paginated cooloff numbers
+            const [rows] = await db.query(`
+                SELECT 
+                    p.id,
+                    CONCAT(
+                        p.national_code,
+                        p.area_code,
+                        p.network_code,
+                        LPAD(p.subscriber_number, 4, '0')
+                    ) as full_number,
+                    p.status,
+                    p.is_golden,
+                    p.gateway,
+                    p.unassignment_date,
+                    c.previous_company,
+                    c.previous_subscriber,
+                    c.previous_gateway,
+                    CASE 
+                        WHEN p.unassignment_date IS NULL THEN 'Never Assigned'
+                        ELSE CONCAT(
+                            DATEDIFF(
+                                DATE_ADD(p.unassignment_date, INTERVAL 90 DAY),
+                                NOW()
+                            ),
+                            ' days remaining'
+                        )
+                    END as assignment_status,
+                    DATEDIFF(
+                        DATE_ADD(p.unassignment_date, INTERVAL 90 DAY),
+                        NOW()
+                    ) as days_remaining
+                FROM phone_numbers p
+                LEFT JOIN cooloff_numbers c ON p.id = c.number_id
+                WHERE p.status = 'cooloff'
+                AND DATE_ADD(p.unassignment_date, INTERVAL 90 DAY) >= NOW()
+                ORDER BY p.unassignment_date DESC
+                LIMIT ? OFFSET ?
+            `, [limit, offset]);
+
+            return {
+                numbers: rows,
+                pagination: {
+                    total,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(total / limit)
+                }
+            };
         } catch (error) {
+            console.error('Error in getCooloffNumbers:', error);
             throw error;
         }
     }
 
-    // Get cooloff numbers
-    static async getCooloffNumbers() {
+    // Check and update cooloff numbers
+    static async updateCooloffStatus() {
         try {
             const [rows] = await db.query(`
-                SELECT p.*, c.unassignment_date, c.previous_subscriber, c.previous_company, c.previous_gateway
-                FROM phone_numbers p
-                JOIN cooloff_numbers c ON p.id = c.number_id
-                WHERE p.status = 'cooloff'
-                ORDER BY c.unassignment_date DESC
+                UPDATE phone_numbers
+                SET status = 'unassigned'
+                WHERE status = 'cooloff'
+                AND unassignment_date < DATE_SUB(NOW(), INTERVAL 90 DAY)
             `);
-            return rows;
+            return rows.affectedRows;
         } catch (error) {
             throw error;
         }
