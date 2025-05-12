@@ -2,6 +2,7 @@
   "name": "frontend",
   "version": "1.0.0",
   "description": "Frontend for Numbering Plan Management System",
+  "type": "module",
   "scripts": {
     "start": "vite",
     "build": "vite build",

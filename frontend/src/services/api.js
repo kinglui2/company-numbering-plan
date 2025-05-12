@@ -64,6 +64,22 @@ export const phoneNumberService = {
             }
 
             const response = await axios.get(url);
+            
+            // Ensure numbers are treated as strings
+            if (response.data.numbers) {
+                response.data.numbers = response.data.numbers.map(number => ({
+                    ...number,
+                    full_number: String(number.full_number)
+                }));
+            }
+            
+            // Debug logging to check response data
+            if (response.data.numbers && response.data.numbers.length > 0) {
+                console.log('API Response - First number type:', typeof response.data.numbers[0].full_number);
+                console.log('API Response - First number value:', response.data.numbers[0].full_number);
+                console.log('API Response - Raw data:', JSON.stringify(response.data.numbers[0]));
+            }
+            
             return response.data;
         } catch (error) {
             console.error('Error fetching available numbers:', error);

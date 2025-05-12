@@ -1,18 +1,175 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Typography, Paper } from '@mui/material';
-import AvailableNumbersTable from '../components/AvailableNumbersTable';
+import { DataGrid } from '@mui/x-data-grid';
+import { IconButton, Tooltip, CircularProgress, Alert } from '@mui/material';
+import { FaUserPlus } from 'react-icons/fa';
+import { phoneNumberService } from '../services/api';
+import '../styles/NumbersTable.css';
 
 const AvailableNumbers = () => {
+    const [numbers, setNumbers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize] = useState(100);
+    const [totalCount, setTotalCount] = useState(0);
+
+    useEffect(() => {
+        fetchNumbers();
+    }, [currentPage]);
+
+    const columns = [
+        { 
+            field: 'full_number', 
+            headerName: 'Full Number', 
+            width: 140,
+            filterable: true,
+            renderCell: (params) => (
+                <Tooltip title={params.value}>
+                    <div className="number-cell">{params.value}</div>
+                </Tooltip>
+            ),
+        },
+        { 
+            field: 'is_golden', 
+            headerName: 'Golden Number', 
+            width: 120,
+            type: 'boolean',
+            filterable: true,
+            renderCell: (params) => (
+                <Tooltip title={params.value ? 'Golden Number' : 'Regular Number'}>
+                    <div className={`golden-cell ${params.value ? 'golden' : 'regular'}`}>
+                        {params.value ? 'Yes' : 'No'}
+                    </div>
+                </Tooltip>
+            ),
+        },
+        { 
+            field: 'gateway', 
+            headerName: 'Gateway', 
+            width: 120,
+            filterable: true,
+            renderCell: (params) => (
+                <Tooltip title={`Gateway: ${params.value || 'Not Set'}`}>
+                    <div className="gateway-cell">{params.value || 'Not Set'}</div>
+                </Tooltip>
+            ),
+        },
+        {
+            field: 'actions',
+            headerName: 'Actions',
+            width: 120,
+            sortable: false,
+            filterable: false,
+            renderCell: (params) => (
+                <div className="action-buttons">
+                    <Tooltip title="Assign Number">
+                        <IconButton
+                            size="small"
+                            onClick={() => handleAssign(params.row)}
+                            className="action-button assign-button"
+                        >
+                            <FaUserPlus />
+                        </IconButton>
+                    </Tooltip>
+                </div>
+            ),
+        },
+    ];
+
+    const fetchNumbers = async () => {
+        try {
+            setLoading(true);
+            const response = await phoneNumberService.getAvailableNumbers(
+                currentPage,
+                pageSize
+            );
+            setNumbers(response.numbers);
+            if (response.total_count) {
+                setTotalCount(response.total_count);
+            }
+            setError(null);
+        } catch (err) {
+            setError('Failed to load available numbers');
+            console.error('Error fetching available numbers:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAssign = (row) => {
+        // TODO: Implement assign functionality
+        console.log('Assign number:', row);
+    };
+
+    if (error) {
+        return (
+            <Alert severity="error" sx={{ mt: 2 }}>
+                Error loading numbers: {error}
+            </Alert>
+        );
+    }
+
     return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h4" gutterBottom>
                 Available Numbers
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                Numbers that are unassigned and past their 90-day cool-off period, eligible for reassignment.
+                Numbers that are unassigned and past their 90-day cool-off period
             </Typography>
             <Paper sx={{ p: 2 }}>
-                <AvailableNumbersTable />
+                {loading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                        <CircularProgress />
+                    </Box>
+                ) : (
+                    <div className="numbers-table-container">
+                        <DataGrid
+                            rows={numbers}
+                            columns={columns}
+                            loading={loading}
+                            disableRowSelectionOnClick
+                            getRowId={(row) => row.id}
+                            hideFooter={true}
+                            autoHeight={false}
+                            density="comfortable"
+                            disableColumnMenu={false}
+                            disableColumnFilter={false}
+                            disableColumnSelector={false}
+                            disableDensitySelector={false}
+                            sx={{
+                                '& .MuiDataGrid-cell:focus': {
+                                    outline: 'none',
+                                },
+                                '& .MuiDataGrid-row:hover': {
+                                    cursor: 'pointer',
+                                },
+                            }}
+                        />
+                        <div className="pagination-container">
+                            <div className="pagination-info">
+                                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} available numbers
+                            </div>
+                            <div className="pagination-buttons">
+                                <button 
+                                    className="pagination-button"
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                >
+                                    Previous
+                                </button>
+                                <button 
+                                    className="pagination-button"
+                                    onClick={() => setCurrentPage(prev => prev + 1)}
+                                    disabled={currentPage * pageSize >= totalCount}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </Paper>
         </Box>
     );

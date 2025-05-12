@@ -96,7 +96,7 @@ function PhoneNumberDetails() {
                 <h2>Phone Number Details</h2>
                 <div className="details-grid">
                     <div>
-                        <strong>Full Number:</strong> {number.full_number}
+                        <strong>Full Number:</strong> {String(number.full_number).padStart(12, '0')}
                     </div>
                     <div>
                         <strong>Status:</strong>

@@ -4,10 +4,11 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AllNumbers from './pages/AllNumbers';
-import AvailableNumbers from './pages/AvailableNumbers';
 import CooloffNumbers from './pages/CooloffNumbers';
 import AssignedNumbers from './pages/AssignedNumbers';
 import MissingData from './pages/MissingData';
+import PhoneNumberDetails from './pages/PhoneNumberDetails';
+import AvailableNumbers from './pages/AvailableNumbers';
 import './styles/main.css';
 import './styles/layout.css';
 
@@ -28,6 +29,7 @@ function App() {
                     <Route path="/numbers/cooloff" element={<Layout><CooloffNumbers /></Layout>} />
                     <Route path="/numbers/assigned" element={<Layout><AssignedNumbers /></Layout>} />
                     <Route path="/numbers/missing" element={<Layout><MissingData /></Layout>} />
+                    <Route path="/numbers/:id" element={<Layout><PhoneNumberDetails /></Layout>} />
                     
                     {/* Catch all route */}
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
