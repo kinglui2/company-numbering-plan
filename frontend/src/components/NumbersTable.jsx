@@ -38,6 +38,8 @@ const NumbersTable = () => {
             field: 'full_number', 
             headerName: 'Full Number', 
             width: 140,
+            flex: 1,
+            minWidth: 140,
             filterable: true,
             renderCell: (params) => (
                 <Tooltip title={params.value}>
@@ -48,7 +50,9 @@ const NumbersTable = () => {
         { 
             field: 'status', 
             headerName: 'Status', 
-            width: 120,
+            width: 100,
+            flex: 0.8,
+            minWidth: 100,
             filterable: true,
             renderCell: (params) => (
                 <Tooltip title={`Status: ${params.value}`}>
@@ -62,6 +66,8 @@ const NumbersTable = () => {
             field: 'is_golden', 
             headerName: 'Golden Number', 
             width: 120,
+            flex: 0.8,
+            minWidth: 110,
             type: 'boolean',
             filterable: true,
             renderCell: (params) => (
@@ -75,7 +81,9 @@ const NumbersTable = () => {
         { 
             field: 'gateway', 
             headerName: 'Gateway', 
-            width: 120,
+            width: 100,
+            flex: 0.8,
+            minWidth: 100,
             filterable: true,
             renderCell: (params) => (
                 <Tooltip title={`Gateway: ${params.value}`}>
@@ -86,7 +94,9 @@ const NumbersTable = () => {
         { 
             field: 'subscriber_name', 
             headerName: 'Subscriber', 
-            width: 180,
+            width: 160,
+            flex: 1.2,
+            minWidth: 140,
             filterable: true,
             renderCell: (params) => (
                 <Tooltip title={params.value || 'No subscriber'}>
@@ -97,7 +107,9 @@ const NumbersTable = () => {
         { 
             field: 'company_name', 
             headerName: 'Company', 
-            width: 180,
+            width: 160,
+            flex: 1.2,
+            minWidth: 140,
             filterable: true,
             renderCell: (params) => (
                 <Tooltip title={params.value || 'No company'}>
@@ -108,7 +120,9 @@ const NumbersTable = () => {
         {
             field: 'actions',
             headerName: 'Actions',
-            width: 120,
+            width: 100,
+            flex: 0.5,
+            minWidth: 90,
             sortable: false,
             filterable: false,
             renderCell: (params) => (
@@ -203,8 +217,7 @@ const NumbersTable = () => {
                 getRowId={(row) => row.id}
                 hideFooter={true}
                 autoHeight={false}
-                columnBuffer={0}
-                columnThreshold={0}
+                columnBuffer={2}
                 density="comfortable"
                 disableColumnMenu={false}
                 disableColumnFilter={false}
@@ -219,9 +232,20 @@ const NumbersTable = () => {
                     '& .MuiDataGrid-row:hover': {
                         cursor: 'pointer',
                     },
-                    '& .MuiDataGrid-virtualScrollerContent': {
-                        height: '100% !important'
-                    }
+                    '& .MuiDataGrid-root': {
+                        border: 'none',
+                        '& .MuiDataGrid-withBorderColor': {
+                            borderColor: 'transparent',
+                        },
+                    },
+                    '& .MuiDataGrid-main': {
+                        overflow: 'hidden',
+                    },
+                    '& .MuiDataGrid-virtualScroller': {
+                        overflow: 'auto !important',
+                    },
+                    width: '100%',
+                    overflowX: 'hidden',
                 }}
             />
             <div className="pagination-container">

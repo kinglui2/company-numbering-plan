@@ -200,18 +200,39 @@ class PhoneNumber {
     static async getCooloffNumbers(page = 1, limit = 100) {
         try {
             const offset = (page - 1) * limit;
+            console.log('Starting getCooloffNumbers with params:', { page, limit, offset });
 
             // Get total count
-            const [countResult] = await db.query(`
+            const countQuery = `
                 SELECT COUNT(*) as total 
                 FROM phone_numbers p
                 WHERE p.status = 'cooloff'
+                AND p.unassignment_date IS NOT NULL
                 AND DATE_ADD(p.unassignment_date, INTERVAL 90 DAY) >= NOW()
-            `);
+            `;
+            console.log('Executing count query:', countQuery);
+            
+            const [countResult] = await db.query(countQuery);
+            console.log('Count result:', countResult);
+            
             const total = countResult[0].total;
 
+            // If no results, return empty array with pagination
+            if (total === 0) {
+                console.log('No cooloff numbers found, returning empty result');
+                return {
+                    numbers: [],
+                    pagination: {
+                        total: 0,
+                        page,
+                        limit,
+                        totalPages: 0
+                    }
+                };
+            }
+
             // Get paginated cooloff numbers
-            const [rows] = await db.query(`
+            const numbersQuery = `
                 SELECT 
                     p.id,
                     CONCAT(
@@ -244,10 +265,15 @@ class PhoneNumber {
                 FROM phone_numbers p
                 LEFT JOIN cooloff_numbers c ON p.id = c.number_id
                 WHERE p.status = 'cooloff'
+                AND p.unassignment_date IS NOT NULL
                 AND DATE_ADD(p.unassignment_date, INTERVAL 90 DAY) >= NOW()
                 ORDER BY p.unassignment_date DESC
                 LIMIT ? OFFSET ?
-            `, [limit, offset]);
+            `;
+            console.log('Executing numbers query with params:', [limit, offset]);
+            
+            const [rows] = await db.query(numbersQuery, [limit, offset]);
+            console.log('Query returned rows:', rows.length);
 
             return {
                 numbers: rows,
@@ -259,7 +285,14 @@ class PhoneNumber {
                 }
             };
         } catch (error) {
-            console.error('Error in getCooloffNumbers:', error);
+            console.error('Detailed error in getCooloffNumbers:', {
+                message: error.message,
+                stack: error.stack,
+                code: error.code,
+                errno: error.errno,
+                sqlMessage: error.sqlMessage,
+                sqlState: error.sqlState
+            });
             throw error;
         }
     }

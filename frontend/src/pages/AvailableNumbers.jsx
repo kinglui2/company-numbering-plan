@@ -32,8 +32,8 @@ const AvailableNumbers = () => {
         },
         { 
             field: 'is_golden', 
-            headerName: 'Golden Number', 
-            width: 120,
+            headerName: 'Is Golden', 
+            width: 100,
             type: 'boolean',
             filterable: true,
             renderCell: (params) => (
@@ -44,21 +44,49 @@ const AvailableNumbers = () => {
                 </Tooltip>
             ),
         },
+        {
+            field: 'unassignment_date',
+            headerName: 'Last Unassigned',
+            width: 150,
+            filterable: true,
+            renderCell: (params) => {
+                if (!params.value) {
+                    return <div>Never Assigned</div>;
+                }
+                const date = new Date(params.value);
+                return (
+                    <Tooltip title={date.toLocaleString()}>
+                        <div>{date.toLocaleDateString()}</div>
+                    </Tooltip>
+                );
+            },
+        },
+        {
+            field: 'previous_company',
+            headerName: 'Previous Company',
+            width: 160,
+            filterable: true,
+            renderCell: (params) => (
+                <Tooltip title={params.value || 'Never Previously Assigned'}>
+                    <div>{params.value || 'Never Previously Assigned'}</div>
+                </Tooltip>
+            ),
+        },
         { 
             field: 'gateway', 
             headerName: 'Gateway', 
-            width: 120,
+            width: 130,
             filterable: true,
             renderCell: (params) => (
-                <Tooltip title={`Gateway: ${params.value || 'Not Set'}`}>
-                    <div className="gateway-cell">{params.value || 'Not Set'}</div>
+                <Tooltip title={params.value || 'Not Set'}>
+                    <div className="gateway-cell">{params.value || '-'}</div>
                 </Tooltip>
             ),
         },
         {
             field: 'actions',
-            headerName: 'Actions',
-            width: 120,
+            headerName: 'Assign',
+            width: 80,
             sortable: false,
             filterable: false,
             renderCell: (params) => (
