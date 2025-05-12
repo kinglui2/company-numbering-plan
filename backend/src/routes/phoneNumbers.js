@@ -14,7 +14,10 @@ router.get('/cooloff', phoneNumberController.getCooloffNumbers);
 // Get available numbers
 router.get('/available', phoneNumberController.getAvailableNumbers);
 
-// Get phone number by ID
+// Get numbers by status (assigned/unassigned)
+router.get('/status/:status', phoneNumberController.getNumbersByStatus);
+
+// Get phone number by ID (this should come after more specific routes)
 router.get('/:id', phoneNumberController.getNumberById);
 
 // Assign a number

@@ -235,6 +235,76 @@ const phoneNumberController = {
             console.error('Error fetching dashboard stats:', error);
             res.status(500).json({ error: 'Failed to fetch dashboard stats' });
         }
+    },
+
+    // Get numbers by status (assigned/unassigned)
+    async getNumbersByStatus(req, res) {
+        try {
+            const { status } = req.params;
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const offset = (page - 1) * limit;
+
+            console.log('Fetching numbers by status:', { status, page, limit, offset });
+
+            // Validate status
+            if (!['assigned', 'unassigned'].includes(status)) {
+                return res.status(400).json({ error: 'Invalid status. Must be either "assigned" or "unassigned"' });
+            }
+
+            // Get total count
+            const [countResult] = await pool.query(
+                'SELECT COUNT(*) as total FROM phone_numbers WHERE status = ?',
+                [status]
+            );
+            const total = countResult[0].total;
+
+            console.log('Total count:', total);
+
+            // Get paginated data with all necessary fields
+            const query = `
+                SELECT 
+                    id,
+                    full_number,
+                    status,
+                    is_golden,
+                    subscriber_name,
+                    company_name,
+                    assignment_date,
+                    unassignment_date,
+                    gateway,
+                    gateway_username
+                FROM phone_numbers 
+                WHERE status = ?
+                ORDER BY full_number
+                LIMIT ? OFFSET ?
+            `;
+
+            const [numbers] = await pool.query(query, [status, limit, offset]);
+            console.log('Fetched numbers:', numbers.length);
+
+            const response = {
+                numbers,
+                total,
+                page,
+                totalPages: Math.ceil(total / limit)
+            };
+
+            console.log('Sending response:', {
+                numberCount: numbers.length,
+                total,
+                page,
+                totalPages: Math.ceil(total / limit)
+            });
+
+            res.json(response);
+        } catch (error) {
+            console.error(`Error fetching ${req.params.status} numbers:`, error);
+            res.status(500).json({ 
+                error: `Failed to fetch ${req.params.status} numbers`,
+                details: error.message 
+            });
+        }
     }
 };
 
