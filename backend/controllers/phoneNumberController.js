@@ -80,10 +80,25 @@ exports.updateNumber = async (req, res) => {
 // Get numbers by status
 exports.getNumbersByStatus = async (req, res) => {
     try {
-        const numbers = await PhoneNumber.getByStatus(req.params.status);
-        res.json(numbers);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 100;
+        const status = req.params.status;
+
+        const result = await PhoneNumber.getByStatus(status, page, limit);
+        
+        // Always return a JSON response, even if numbers array is empty
+        res.json({
+            numbers: result.numbers,
+            total: result.total,
+            page: result.page,
+            totalPages: result.totalPages
+        });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Error fetching numbers by status:', error);
+        res.status(500).json({ 
+            message: error.message,
+            error: 'Failed to fetch numbers'
+        });
     }
 };
 

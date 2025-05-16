@@ -9,23 +9,24 @@ const authService = {
             password
         });
         if (response.data.token) {
-            localStorage.setItem('user', JSON.stringify(response.data));
+            localStorage.setItem('token', response.data.token);
+            axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
         }
         return response.data;
     },
 
     logout() {
-        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        delete axios.defaults.headers.common['Authorization'];
     },
 
     getCurrentUser() {
-        const user = localStorage.getItem('user');
-        return user ? JSON.parse(user) : null;
+        const token = localStorage.getItem('token');
+        return token ? { token } : null;
     },
 
     getToken() {
-        const user = this.getCurrentUser();
-        return user ? user.token : null;
+        return localStorage.getItem('token');
     },
 
     isAuthenticated() {

@@ -17,7 +17,6 @@ export const phoneNumberService = {
             const response = await axios.get(url);
             return response.data;
         } catch (error) {
-            console.error('Error fetching numbers:', error);
             throw error;
         }
     },
@@ -76,42 +75,27 @@ export const phoneNumberService = {
             const response = await axios.get(`${API_URL}/phone-numbers/stats`);
             return response.data;
         } catch (error) {
-            console.error('Error fetching dashboard stats:', error);
             throw error;
         }
     },
 
-    getAvailableNumbers: async (page = 1, limit = 100, filters = {}) => {
+    getAvailableNumbers: async (page = 1, limit = 100, options = {}) => {
         try {
             let url = `${API_URL}/phone-numbers/available?page=${page}&limit=${limit}`;
             
-            // Add filters if they exist
-            if (filters.items && filters.items.length > 0) {
-                filters.items.forEach(filter => {
+            if (options.fetchAll) {
+                url += '&fetchAll=true';
+            }
+            
+            if (options.items && options.items.length > 0) {
+                options.items.forEach(filter => {
                     url += `&${filter.columnField}=${filter.value}`;
                 });
             }
 
             const response = await axios.get(url);
-            
-            // Ensure numbers are treated as strings
-            if (response.data.numbers) {
-                response.data.numbers = response.data.numbers.map(number => ({
-                    ...number,
-                    full_number: String(number.full_number)
-                }));
-            }
-            
-            // Debug logging to check response data
-            if (response.data.numbers && response.data.numbers.length > 0) {
-                console.log('API Response - First number type:', typeof response.data.numbers[0].full_number);
-                console.log('API Response - First number value:', response.data.numbers[0].full_number);
-                console.log('API Response - Raw data:', JSON.stringify(response.data.numbers[0]));
-            }
-            
             return response.data;
         } catch (error) {
-            console.error('Error fetching available numbers:', error);
             throw error;
         }
     },
@@ -124,8 +108,7 @@ export const phoneNumberService = {
                     limit
                 }
             });
-
-            // Transform the response data
+            
             if (response.data.numbers) {
                 response.data.numbers = response.data.numbers.map(number => ({
                     ...number,
@@ -141,8 +124,45 @@ export const phoneNumberService = {
                 totalPages: response.data.totalPages || Math.ceil((response.data.total || 0) / limit)
             };
         } catch (error) {
-            console.error(`Error fetching ${status} numbers:`, error);
             throw new Error(`Failed to fetch ${status} numbers. ${error.response?.data?.error || error.message}`);
+        }
+    },
+
+    getMissingDataNumbers: async (page = 1, limit = 100, missingType = 'all') => {
+        try {
+            const response = await axios.get(`${API_URL}/phone-numbers/missing`, {
+                params: {
+                    page,
+                    limit,
+                    type: missingType
+                }
+            });
+            
+            const numbers = response.data.numbers?.map(number => ({
+                ...number,
+                id: number.id || number.full_number,
+                full_number: String(number.full_number)
+            })) || [];
+
+            return {
+                numbers,
+                total: response.data.total || 0,
+                page: response.data.page || page,
+                limit: response.data.limit || limit,
+                totalPages: response.data.totalPages || Math.ceil((response.data.total || 0) / limit),
+                stats: response.data.stats || {}
+            };
+        } catch (error) {
+            throw new Error(`Failed to fetch numbers with missing data. ${error.response?.data?.error || error.message}`);
+        }
+    },
+
+    updateNumber: async (id, data) => {
+        try {
+            const response = await axios.put(`${API_URL}/phone-numbers/${id}`, data);
+            return response.data;
+        } catch (error) {
+            throw new Error(`Failed to update number. ${error.response?.data?.error || error.message}`);
         }
     }
 };

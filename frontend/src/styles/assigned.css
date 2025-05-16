@@ -58,6 +58,7 @@
 .action-buttons {
     display: flex;
     gap: 8px;
+    justify-content: center;
 }
 
 .action-button {
@@ -81,6 +82,7 @@
 
 .golden-indicator.is-golden {
     background: rgba(255, 215, 0, 0.1);
+    color: #ffd700;
 }
 
 /* Ensure proper DataGrid layout */
@@ -92,6 +94,19 @@
 .MuiDataGrid-main {
     width: 100% !important;
     height: 100% !important;
+}
+
+.MuiDataGrid-cell {
+    padding: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.MuiDataGrid-cell > div {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
 }
 
 /* Handle mobile responsiveness */

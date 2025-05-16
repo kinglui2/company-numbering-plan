@@ -6,7 +6,6 @@ import {
     FaHashtag, 
     FaUserPlus, 
     FaHistory, 
-    FaChartBar, 
     FaUsers, 
     FaCog, 
     FaSignOutAlt,
@@ -48,8 +47,7 @@ function Sidebar() {
     ];
 
     const managerItems = [
-        { path: '/logs', icon: <FaHistory />, label: 'Logs' },
-        { path: '/reports', icon: <FaChartBar />, label: 'Reports' },
+        { path: '/activity', icon: <FaHistory />, label: 'Activity' },
         { path: '/users', icon: <FaUsers />, label: 'Users' },
         { path: '/settings', icon: <FaCog />, label: 'Settings' }
     ];

@@ -89,7 +89,7 @@ function NumberList({ title, fetchNumbers, showFilters = true }) {
                         >
                             <option value="">All Gateways</option>
                             <option value="CS01">CS01</option>
-                            <option value="CS02">CS02</option>
+                            <option value="LS02">LS02</option>
                             {/* Add more gateways as needed */}
                         </select>
                         <select

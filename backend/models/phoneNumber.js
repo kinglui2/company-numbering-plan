@@ -80,11 +80,43 @@ class PhoneNumber {
     }
 
     // Get numbers by status
-    static async getByStatus(status) {
+    static async getByStatus(status, page = 1, limit = 100) {
         try {
-            const [rows] = await db.query('SELECT * FROM phone_numbers WHERE status = ?', [status]);
-            return rows;
+            const offset = (page - 1) * limit;
+            
+            // Get total count
+            const [countResult] = await db.query(
+                'SELECT COUNT(*) as total FROM phone_numbers WHERE status = ?',
+                [status]
+            );
+            
+            // Get paginated results
+            const [rows] = await db.query(
+                `SELECT 
+                    id,
+                    full_number,
+                    status,
+                    subscriber_name,
+                    company_name,
+                    gateway,
+                    gateway_username,
+                    assignment_date,
+                    is_golden
+                FROM phone_numbers 
+                WHERE status = ?
+                ORDER BY assignment_date DESC
+                LIMIT ? OFFSET ?`,
+                [status, limit, offset]
+            );
+
+            return {
+                numbers: rows || [],
+                total: countResult[0].total,
+                page: page,
+                totalPages: Math.ceil(countResult[0].total / limit)
+            };
         } catch (error) {
+            console.error('Error in getByStatus:', error);
             throw error;
         }
     }

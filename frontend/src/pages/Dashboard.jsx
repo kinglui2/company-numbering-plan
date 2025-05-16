@@ -103,17 +103,21 @@ function Dashboard() {
                         </button>
                     </div>
                     <div className="action-buttons">
-                        <Link to="/numbers" className="action-button">
+                        <Link to="/numbers/all" className="action-button">
                             <NumbersIcon />
-                            <span>View All Numbers</span>
+                            <span>All Numbers</span>
                         </Link>
-                        <Link to="/available" className="action-button">
+                        <Link to="/numbers/available" className="action-button">
                             <AvailableIcon />
-                            <span>View Available Numbers</span>
+                            <span>Available Numbers</span>
                         </Link>
-                        <Link to="/cooloff" className="action-button">
+                        <Link to="/numbers/cooloff" className="action-button">
                             <TimerIcon />
-                            <span>View Cool-off Numbers</span>
+                            <span>Cool-off Numbers</span>
+                        </Link>
+                        <Link to="/numbers/assigned" className="action-button">
+                            <AssignmentIcon />
+                            <span>Assigned Numbers</span>
                         </Link>
                     </div>
                 </div>

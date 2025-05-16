@@ -9,6 +9,9 @@ import AssignedNumbers from './pages/AssignedNumbers';
 import MissingData from './pages/MissingData';
 import PhoneNumberDetails from './pages/PhoneNumberDetails';
 import AvailableNumbers from './pages/AvailableNumbers';
+import Assign from './pages/Assign';
+import Activity from './pages/Activity';
+import ProtectedRoute from './components/ProtectedRoute';
 import './styles/main.css';
 import './styles/layout.css';
 
@@ -30,6 +33,17 @@ function App() {
                     <Route path="/numbers/assigned" element={<Layout><AssignedNumbers /></Layout>} />
                     <Route path="/numbers/missing" element={<Layout><MissingData /></Layout>} />
                     <Route path="/numbers/:id" element={<Layout><PhoneNumberDetails /></Layout>} />
+                    <Route path="/assign" element={<Layout><Assign /></Layout>} />
+                    
+                    {/* Manager routes */}
+                    <Route 
+                        path="/activity" 
+                        element={
+                            <ProtectedRoute allowedRoles={['manager']}>
+                                <Layout><Activity /></Layout>
+                            </ProtectedRoute>
+                        } 
+                    />
                     
                     {/* Catch all route */}
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />

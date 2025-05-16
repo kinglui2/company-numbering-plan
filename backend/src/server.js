@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const phoneNumberRoutes = require('./routes/phoneNumbers');
 const authRoutes = require('./routes/auth');
+const activityRoutes = require('./routes/activity');
 const pool = require('./config/database');
 require('./cron/updateCooloff');
 
@@ -27,6 +28,7 @@ pool.getConnection()
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/phone-numbers', phoneNumberRoutes);
+app.use('/api/activity', activityRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

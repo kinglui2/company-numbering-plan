@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { phoneNumberService } from '../services/api';
+import { Tooltip } from '@mui/material';
+import StarIcon from '@mui/icons-material/Star';
 
 function PhoneNumberDetails() {
     const { id } = useParams();
@@ -96,7 +98,12 @@ function PhoneNumberDetails() {
                 <h2>Phone Number Details</h2>
                 <div className="details-grid">
                     <div>
-                        <strong>Full Number:</strong> {String(number.full_number).padStart(12, '0')}
+                        <strong>Full Number:</strong> {number.full_number}
+                        {Boolean(number.is_golden) && (
+                            <Tooltip title="Golden Number">
+                                <StarIcon sx={{ ml: 1, color: 'gold', verticalAlign: 'top' }} />
+                            </Tooltip>
+                        )}
                     </div>
                     <div>
                         <strong>Status:</strong>

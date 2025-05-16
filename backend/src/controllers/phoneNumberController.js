@@ -107,7 +107,7 @@ const phoneNumberController = {
         try {
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 100;
-            const offset = (page - 1) * limit;
+            const fetchAll = req.query.fetchAll === 'true';
 
             // Get total count of available numbers
             const countQuery = `
@@ -123,7 +123,7 @@ const phoneNumberController = {
             const [countResult] = await pool.query(countQuery);
             const total = countResult[0].total;
 
-            // Get paginated available numbers with formatted full_number
+            // Get available numbers with properly formatted full_number
             const numbersQuery = `
                 SELECT 
                     id,
@@ -154,19 +154,20 @@ const phoneNumberController = {
                         ELSE 1 
                     END,
                     full_number
-                LIMIT ? OFFSET ?
+                ${!fetchAll ? 'LIMIT ? OFFSET ?' : ''}
             `;
 
-            const [numbers] = await pool.query(numbersQuery, [limit, offset]);
+            const queryParams = fetchAll ? [] : [limit, (page - 1) * limit];
+            const [numbers] = await pool.query(numbersQuery, queryParams);
 
             res.json({
                 numbers,
                 total_count: total,
                 pagination: {
                     total,
-                    page,
-                    limit,
-                    totalPages: Math.ceil(total / limit)
+                    page: fetchAll ? 1 : page,
+                    limit: fetchAll ? total : limit,
+                    totalPages: fetchAll ? 1 : Math.ceil(total / limit)
                 }
             });
         } catch (error) {
@@ -303,6 +304,106 @@ const phoneNumberController = {
             res.status(500).json({ 
                 error: `Failed to fetch ${req.params.status} numbers`,
                 details: error.message 
+            });
+        }
+    },
+
+    // Get numbers with missing data
+    async getMissingDataNumbers(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 100;
+            const type = req.query.type || 'all';
+            const offset = (page - 1) * limit;
+
+            console.log('Fetching missing data numbers:', { page, limit, type, offset });
+
+            // Base condition for assigned numbers
+            const baseCondition = "status = 'assigned'";
+
+            // Build the WHERE clause based on missing data type
+            let whereClause = '';
+            switch (type) {
+                case 'subscriber':
+                    whereClause = `${baseCondition} AND (subscriber_name IS NULL OR subscriber_name = "")`;
+                    break;
+                case 'company':
+                    whereClause = `${baseCondition} AND (company_name IS NULL OR company_name = "")`;
+                    break;
+                case 'gateway':
+                    whereClause = `${baseCondition} AND (gateway IS NULL OR gateway = "")`;
+                    break;
+                case 'gateway_username':
+                    whereClause = `${baseCondition} AND (gateway_username IS NULL OR gateway_username = "")`;
+                    break;
+                default: // 'all'
+                    whereClause = `${baseCondition} AND (
+                        (subscriber_name IS NULL OR subscriber_name = "") OR 
+                        (company_name IS NULL OR company_name = "") OR 
+                        (gateway IS NULL OR gateway = "") OR 
+                        (gateway_username IS NULL OR gateway_username = "")
+                    )`;
+            }
+
+            // Get total counts for stats
+            const statsQuery = `
+                SELECT 
+                    COUNT(*) as totalMissing,
+                    SUM(CASE WHEN subscriber_name IS NULL OR subscriber_name = "" THEN 1 ELSE 0 END) as missingSubscriber,
+                    SUM(CASE WHEN company_name IS NULL OR company_name = "" THEN 1 ELSE 0 END) as missingCompany,
+                    SUM(CASE WHEN gateway IS NULL OR gateway = "" THEN 1 ELSE 0 END) as missingGateway,
+                    SUM(CASE WHEN gateway_username IS NULL OR gateway_username = "" THEN 1 ELSE 0 END) as missingGatewayUsername
+                FROM phone_numbers
+                WHERE ${whereClause}
+            `;
+
+            // Get paginated numbers with missing data
+            const numbersQuery = `
+                SELECT 
+                    id,
+                    CONCAT(
+                        national_code,
+                        area_code,
+                        network_code,
+                        LPAD(subscriber_number, 4, '0')
+                    ) as full_number,
+                    subscriber_name,
+                    company_name,
+                    gateway,
+                    gateway_username,
+                    status,
+                    assignment_date
+                FROM phone_numbers
+                WHERE ${whereClause}
+                ORDER BY full_number
+                LIMIT ? OFFSET ?
+            `;
+
+            const [statsResult] = await pool.query(statsQuery);
+            const [numbers] = await pool.query(numbersQuery, [limit, offset]);
+            const stats = statsResult[0];
+
+            console.log('Query results:', {
+                totalRecords: stats.totalMissing,
+                returnedRecords: numbers.length,
+                page,
+                limit,
+                offset
+            });
+
+            res.json({
+                numbers,
+                total: stats.totalMissing,
+                page,
+                limit,
+                totalPages: Math.ceil(stats.totalMissing / limit),
+                stats
+            });
+        } catch (error) {
+            console.error('Error fetching numbers with missing data:', error);
+            res.status(500).json({ 
+                error: 'Failed to fetch numbers with missing data',
+                details: error.message
             });
         }
     }

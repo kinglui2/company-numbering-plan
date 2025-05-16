@@ -83,14 +83,13 @@ function AssignedNumbers() {
             field: 'assignment_date',
             headerName: 'Assigned Date',
             width: 150,
-            valueFormatter: (params) => {
-                if (!params?.value) return '-';
-                try {
-                    return new Date(params.value).toLocaleDateString();
-                } catch (error) {
-                    console.warn('Invalid date value:', params.value);
-                    return '-';
-                }
+            renderCell: (params) => {
+                const formattedDate = params.value ? new Date(params.value).toLocaleDateString() : '-';
+                return (
+                    <Tooltip title={formattedDate}>
+                        <div>{formattedDate}</div>
+                    </Tooltip>
+                );
             },
         },
         {
@@ -146,16 +145,18 @@ function AssignedNumbers() {
         },
         {
             field: 'unassignment_date',
-            headerName: 'Unassigned Date',
+            headerName: 'Last Unassigned',
             width: 150,
-            valueFormatter: (params) => {
-                if (!params?.value) return '-';
-                try {
-                    return new Date(params.value).toLocaleDateString();
-                } catch (error) {
-                    console.warn('Invalid date value:', params.value);
-                    return '-';
+            renderCell: (params) => {
+                if (!params.value) {
+                    return <div>Never Assigned</div>;
                 }
+                const date = new Date(params.value);
+                return (
+                    <Tooltip title={date.toLocaleString()}>
+                        <div>{date.toLocaleDateString()}</div>
+                    </Tooltip>
+                );
             },
         },
         {
@@ -163,8 +164,8 @@ function AssignedNumbers() {
             headerName: 'Previous Company',
             width: 200,
             renderCell: (params) => (
-                <Tooltip title={params.value || 'N/A'}>
-                    <div>{params.value || '-'}</div>
+                <Tooltip title={params.value || 'Never Previously Assigned'}>
+                    <div>{params.value || 'Never Previously Assigned'}</div>
                 </Tooltip>
             ),
         },
@@ -173,8 +174,8 @@ function AssignedNumbers() {
             headerName: 'Previous Subscriber',
             width: 200,
             renderCell: (params) => (
-                <Tooltip title={params.value || 'N/A'}>
-                    <div>{params.value || '-'}</div>
+                <Tooltip title={params.value || 'Never Previously Assigned'}>
+                    <div>{params.value || 'Never Previously Assigned'}</div>
                 </Tooltip>
             ),
         },
@@ -227,11 +228,15 @@ function AssignedNumbers() {
             setLoading(true);
             setError(null);
             
+            console.log('Making request with:', { viewMode, page, pageSize });
+            
             const response = await phoneNumberService.getNumbersByStatus(
                 viewMode,
                 page,
                 pageSize
             );
+            
+            console.log('API Response:', response);
             
             if (!response.numbers) {
                 throw new Error('Invalid response format from server');
@@ -308,6 +313,9 @@ function AssignedNumbers() {
                 </Alert>
             )}
 
+            {console.log('Sample number:', JSON.stringify(numbers[0], null, 2))}
+            {console.log('Column definitions:', JSON.stringify(viewMode === 'assigned' ? assignedColumns : unassignedColumns, null, 2))}
+
             <div className="data-grid-container" style={{ 
                 height: 'calc(100vh - 250px)',
                 width: '100%',
@@ -320,11 +328,26 @@ function AssignedNumbers() {
                     paginationMode="server"
                     rowCount={totalCount}
                     loading={loading}
-                    pageSize={pageSize}
-                    rowsPerPageOptions={[25, 50, 100]}
+                    pageSizeOptions={[25, 50, 100]}
                     disableSelectionOnClick
                     getRowId={(row) => row.id || row.full_number}
                     autoHeight={false}
+                    initialState={{
+                        pagination: {
+                            paginationModel: {
+                                pageSize: pageSize,
+                                page: page - 1
+                            },
+                        },
+                    }}
+                    paginationModel={{
+                        page: page - 1,
+                        pageSize
+                    }}
+                    onPaginationModelChange={(model) => {
+                        setPage(model.page + 1);
+                        setPageSize(model.pageSize);
+                    }}
                     sx={{
                         '& .golden-indicator.is-golden': {
                             color: 'gold',
@@ -350,16 +373,6 @@ function AssignedNumbers() {
                                 {loading ? 'Loading...' : error ? 'Error loading data' : 'No numbers found'}
                             </div>
                         )
-                    }}
-                    paginationModel={{
-                        page: page - 1,
-                        pageSize
-                    }}
-                    onPaginationModelChange={(model) => {
-                        setPage(model.page + 1);
-                        if (model.pageSize !== pageSize) {
-                            setPageSize(model.pageSize);
-                        }
                     }}
                 />
             </div>

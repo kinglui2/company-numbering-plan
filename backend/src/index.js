@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
 const phoneNumberRoutes = require('./routes/phoneNumbers');
+const activityRoutes = require('./routes/activity');
 const pool = require('./config/database');
 require('./cron/updateCooloff');
 
@@ -30,6 +31,7 @@ pool.getConnection()
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/phone-numbers', phoneNumberRoutes);
+app.use('/api/activity', activityRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
