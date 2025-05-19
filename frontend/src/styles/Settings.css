@@ -1,0 +1,95 @@
+.settings-container {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.settings-container .MuiPaper-root {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.settings-container .MuiTabs-root {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.settings-container .MuiTab-root {
+    text-transform: none;
+    font-weight: 500;
+    min-width: 200px;
+}
+
+.settings-container .MuiFormControl-root {
+    margin-bottom: 1rem;
+}
+
+.settings-container .MuiDivider-root {
+    margin: 2rem 0;
+}
+
+.settings-container .MuiTypography-h6 {
+    color: #1a1a1a;
+    margin-bottom: 1.5rem;
+}
+
+.settings-container .MuiFormControlLabel-root {
+    margin-left: 0;
+    margin-bottom: 0.5rem;
+}
+
+.settings-container .MuiButton-root {
+    text-transform: none;
+    padding: 0.5rem 2rem;
+}
+
+.settings-container .MuiAlert-root {
+    margin-bottom: 1.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .settings-container {
+        padding: 1rem;
+    }
+
+    .settings-container .MuiTab-root {
+        min-width: 150px;
+    }
+}
+
+/* Tooltip styles */
+.settings-container .MuiTooltip-tooltip {
+    background-color: #333;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+}
+
+/* Form field helper text */
+.settings-container .MuiFormHelperText-root {
+    margin-top: 0.25rem;
+}
+
+/* Switch styles */
+.settings-container .MuiSwitch-root {
+    margin-right: 0.5rem;
+}
+
+/* Loading state */
+.settings-container .MuiCircularProgress-root {
+    margin-right: 0.5rem;
+}
+
+/* Success message animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.settings-container .MuiAlert-standardSuccess {
+    animation: fadeIn 0.3s ease-out;
+} 

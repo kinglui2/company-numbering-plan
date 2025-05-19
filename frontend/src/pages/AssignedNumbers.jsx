@@ -6,7 +6,8 @@ import {
     Tooltip, 
     ToggleButtonGroup, 
     ToggleButton,
-    IconButton
+    IconButton,
+    Box
 } from '@mui/material';
 import { FaEye, FaEdit } from 'react-icons/fa';
 import { phoneNumberService } from '../services/api';
@@ -108,12 +109,12 @@ function AssignedNumbers() {
             width: 120,
             sortable: false,
             renderCell: (params) => (
-                <div className="action-buttons">
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
                     <Tooltip title="View Details">
                         <IconButton
                             size="small"
                             onClick={() => handleViewDetails(params.row)}
-                            className="action-button view-button"
+                            sx={{ color: '#1976d2' }}
                         >
                             <FaEye />
                         </IconButton>
@@ -122,12 +123,12 @@ function AssignedNumbers() {
                         <IconButton
                             size="small"
                             onClick={() => handleEdit(params.row)}
-                            className="action-button edit-button"
+                            sx={{ color: '#ed6c02' }}
                         >
                             <FaEdit />
                         </IconButton>
                     </Tooltip>
-                </div>
+                </Box>
             ),
         },
     ];
@@ -195,12 +196,12 @@ function AssignedNumbers() {
             width: 120,
             sortable: false,
             renderCell: (params) => (
-                <div className="action-buttons">
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
                     <Tooltip title="View Details">
                         <IconButton
                             size="small"
                             onClick={() => handleViewDetails(params.row)}
-                            className="action-button view-button"
+                            sx={{ color: '#1976d2' }}
                         >
                             <FaEye />
                         </IconButton>
@@ -209,12 +210,12 @@ function AssignedNumbers() {
                         <IconButton
                             size="small"
                             onClick={() => handleEdit(params.row)}
-                            className="action-button edit-button"
+                            sx={{ color: '#ed6c02' }}
                         >
                             <FaEdit />
                         </IconButton>
                     </Tooltip>
-                </div>
+                </Box>
             ),
         },
     ];

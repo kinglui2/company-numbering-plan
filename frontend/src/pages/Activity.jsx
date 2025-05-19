@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Box,
     Paper,
@@ -19,7 +19,12 @@ import {
     useTheme,
     Divider,
     Card,
-    CardContent
+    CardContent,
+    InputAdornment,
+    Stack,
+    Collapse,
+    Snackbar,
+    CircularProgress
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -33,18 +38,26 @@ import {
     Logout as LogoutIcon,
     Clear as ClearIcon,
     Search as SearchIcon,
-    FilterList as FilterIcon
+    FilterList as FilterIcon,
+    ExpandMore as ExpandMoreIcon,
+    ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
 import activityService from '../services/activityService';
-import { format } from 'date-fns';
+import { format, isAfter, isBefore } from 'date-fns';
+import debounce from 'lodash/debounce';
+import '../styles/Activity.css';
 
 const Activity = () => {
     const theme = useTheme();
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+    const [isLoadingFilters, setIsLoadingFilters] = useState(false);
     const [error, setError] = useState(null);
+    const [successMessage, setSuccessMessage] = useState(null);
     const [selectedActivity, setSelectedActivity] = useState(null);
     const [openDialog, setOpenDialog] = useState(false);
+    const [showFilters, setShowFilters] = useState(true);
     
     // Filters
     const [filters, setFilters] = useState({
@@ -60,10 +73,70 @@ const Activity = () => {
     const [pageSize, setPageSize] = useState(10);
     const [totalRows, setTotalRows] = useState(0);
 
+    // Enhanced cleanup function
+    const cleanupData = useCallback(() => {
+        // Clear all data states
+        setActivities([]);
+        setSelectedActivity(null);
+        setError(null);
+        setSuccessMessage(null);
+        
+        // Reset all filters
+        setFilters({
+            actionType: '',
+            targetType: '',
+            startDate: null,
+            endDate: null,
+            searchTerm: ''
+        });
+        
+        // Reset pagination
+        setPage(0);
+        setPageSize(10);
+        setTotalRows(0);
+        
+        // Reset loading states
+        setLoading(false);
+        setIsLoadingDetails(false);
+        setIsLoadingFilters(false);
+        
+        // Close dialog if open
+        if (openDialog) {
+            setOpenDialog(false);
+        }
+    }, [openDialog]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            cleanupData();
+        };
+    }, [cleanupData]);
+
+    const getErrorMessage = (error) => {
+        if (error.response?.status === 404) return 'No activities found';
+        if (error.response?.status === 403) return 'You do not have permission to view activities';
+        if (error.response?.status === 400) return 'Invalid request parameters';
+        return error.response?.data?.message || 'An unexpected error occurred';
+    };
+
+    const validateDateRange = (startDate, endDate) => {
+        if (startDate && endDate && isAfter(startDate, endDate)) {
+            setError('End date must be after start date');
+            return false;
+        }
+        return true;
+    };
+
     const fetchActivities = async () => {
         try {
             setLoading(true);
             setError(null);
+
+            if (!validateDateRange(filters.startDate, filters.endDate)) {
+                return;
+            }
+
             const response = await activityService.getActivities({
                 page: page + 1,
                 limit: pageSize,
@@ -74,39 +147,132 @@ const Activity = () => {
             setActivities(response.activities);
             setTotalRows(response.pagination.total);
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to fetch activities');
+            const errorMessage = getErrorMessage(err);
+            setError(errorMessage);
+            console.error('Error fetching activities:', err);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchActivities();
-    }, [page, pageSize, filters]);
+    // Debounced search handler
+    const debouncedSearch = useCallback(
+        debounce(async (value) => {
+            try {
+                setFilters(prev => ({ ...prev, searchTerm: value }));
+                setPage(0);
+                await fetchActivities();
+            } catch (err) {
+                console.error('Error in debounced search:', err);
+                setError('Search failed. Please try again.');
+            }
+        }, 300),
+        []
+    );
 
-    const handleFilterChange = (field, value) => {
-        setFilters(prev => ({ ...prev, [field]: value }));
-        setPage(0);
+    const handleFilterChange = async (field, value) => {
+        try {
+            setIsLoadingFilters(true);
+            setError(null);
+
+            // Update the specific filter
+            setFilters(prev => ({ ...prev, [field]: value }));
+            
+            // Reset page when filters change
+            setPage(0);
+
+            // For search term, use the debounced handler
+            if (field === 'searchTerm') {
+                debouncedSearch(value);
+            } else {
+                // For other filters, fetch immediately
+                await fetchActivities();
+            }
+        } catch (err) {
+            console.error('Error updating filter:', err);
+            setError('Failed to update filter. Please try again.');
+        } finally {
+            setIsLoadingFilters(false);
+        }
     };
 
-    const clearFilters = () => {
-        setFilters({
-            actionType: '',
-            targetType: '',
-            startDate: null,
-            endDate: null,
-            searchTerm: ''
-        });
+    const clearFilters = async () => {
+        try {
+            setIsLoadingFilters(true);
+            setError(null);
+
+            // Reset all filter states
+            const resetFilters = {
+                actionType: '',
+                targetType: '',
+                startDate: null,
+                endDate: null,
+                searchTerm: ''
+            };
+
+            // Reset pagination
+            setPage(0);
+            setPageSize(10);
+
+            // Update filters state
+            setFilters(resetFilters);
+
+            // Force update the search input value
+            const searchInput = document.querySelector('input[aria-label="Search activities"]');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+
+            // Reset date pickers
+            const startDateInput = document.querySelector('input[aria-label="Filter by start date"]');
+            const endDateInput = document.querySelector('input[aria-label="Filter by end date"]');
+            if (startDateInput) startDateInput.value = '';
+            if (endDateInput) endDateInput.value = '';
+
+            // Wait for state updates to complete
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            // Fetch activities with cleared filters
+            await fetchActivities();
+
+            // Show success message only after everything is cleared
+            setSuccessMessage('All filters have been cleared successfully');
+        } catch (err) {
+            console.error('Error clearing filters:', err);
+            setError('Failed to clear filters. Please try again.');
+        } finally {
+            setIsLoadingFilters(false);
+        }
     };
 
     const handleViewDetails = async (activity) => {
         try {
+            setIsLoadingDetails(true);
             const details = await activityService.getActivityById(activity.id);
             setSelectedActivity(details);
             setOpenDialog(true);
         } catch (err) {
-            setError('Failed to fetch activity details');
+            const errorMessage = getErrorMessage(err);
+            setError(errorMessage);
+            console.error('Error fetching activity details:', err);
+        } finally {
+            setIsLoadingDetails(false);
         }
+    };
+
+    // Cleanup when dialog is closed
+    const handleCloseDialog = () => {
+        setOpenDialog(false);
+        setSelectedActivity(null);
+        setIsLoadingDetails(false);
+    };
+
+    const handleCloseError = () => {
+        setError(null);
+    };
+
+    const handleCloseSuccess = () => {
+        setSuccessMessage(null);
     };
 
     const getActionIcon = (actionType) => {
@@ -155,6 +321,7 @@ const Activity = () => {
                     color={getActionColor(params.value)}
                     variant="outlined"
                     size="small"
+                    className="action-chip"
                 />
             )
         },
@@ -167,16 +334,40 @@ const Activity = () => {
                     label={params.value}
                     size="small"
                     variant="outlined"
+                    className="target-chip"
                 />
             )
         },
-        { field: 'target_id', headerName: 'Target ID', width: 150 },
-        { field: 'user_name', headerName: 'User', width: 150 },
+        { 
+            field: 'target_id', 
+            headerName: 'Target ID', 
+            width: 150,
+            renderCell: (params) => (
+                <Typography variant="body2" className="cell-text">
+                    {params.value}
+                </Typography>
+            )
+        },
+        { 
+            field: 'user_name', 
+            headerName: 'User', 
+            width: 150,
+            renderCell: (params) => (
+                <Typography variant="body2" className="cell-text">
+                    {params.value}
+                </Typography>
+            )
+        },
         {
             field: 'created_at',
             headerName: 'Date',
             width: 180,
-            valueFormatter: (params) => format(new Date(params.value), 'yyyy-MM-dd HH:mm:ss')
+            valueFormatter: (params) => format(new Date(params.value), 'yyyy-MM-dd HH:mm:ss'),
+            renderCell: (params) => (
+                <Typography variant="body2" className="cell-date">
+                    {params.formattedValue}
+                </Typography>
+            )
         },
         {
             field: 'actions',
@@ -187,14 +378,9 @@ const Activity = () => {
                 <Tooltip title="View Details">
                     <IconButton
                         onClick={() => handleViewDetails(params.row)}
-                        sx={{
-                            '&:hover': {
-                                backgroundColor: theme.palette.primary.light,
-                                color: theme.palette.primary.main
-                            }
-                        }}
+                        size="small"
                     >
-                        <InfoIcon />
+                        <InfoIcon fontSize="small" />
                     </IconButton>
                 </Tooltip>
             )
@@ -208,106 +394,180 @@ const Activity = () => {
         return String(value);
     };
 
+    useEffect(() => {
+        fetchActivities();
+    }, [page, pageSize, filters.actionType, filters.targetType, filters.startDate, filters.endDate]);
+
+    // Add cleanup when component is hidden/unmounted
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                cleanupData();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [cleanupData]);
+
     return (
-        <Box p={3}>
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 600, mb: 3 }}>
-                Activity Log
-            </Typography>
+        <Box className="activity-container" role="main" aria-label="Activity Log">
+            <Box className="activity-header">
+                <Typography variant="h4" component="h1" className="activity-title">
+                    Activity Log
+                </Typography>
+                <Button
+                    variant="outlined"
+                    startIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    onClick={() => setShowFilters(!showFilters)}
+                    size="small"
+                    aria-label={showFilters ? 'Hide filters' : 'Show filters'}
+                >
+                    {showFilters ? 'Hide Filters' : 'Show Filters'}
+                </Button>
+            </Box>
 
             {error && (
                 <Alert
                     severity="error"
                     sx={{ mb: 2 }}
-                    onClose={() => setError(null)}
+                    onClose={handleCloseError}
+                    role="alert"
                 >
                     {error}
                 </Alert>
             )}
 
-            <Card sx={{ mb: 3 }}>
-                <CardContent>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                        <Typography variant="h6" component="h2">
-                            Filters
-                        </Typography>
-                        <Button
-                            startIcon={<ClearIcon />}
-                            onClick={clearFilters}
-                            size="small"
-                        >
-                            Clear All
-                        </Button>
-                    </Box>
-                    <Grid container spacing={2} alignItems="center">
-                        <Grid grid={{ xs: 12, sm: 6, md: 2 }}>
+            {successMessage && (
+                <Alert
+                    severity="success"
+                    sx={{ mb: 2 }}
+                    onClose={handleCloseSuccess}
+                    role="alert"
+                >
+                    {successMessage}
+                </Alert>
+            )}
+
+            <Collapse in={showFilters}>
+                <Card className="filter-card">
+                    <CardContent>
+                        <Box className="filter-header">
+                            <Typography variant="h6" component="h2" className="filter-title">
+                                <FilterIcon color="primary" />
+                                Filters
+                            </Typography>
+                            <Button
+                                startIcon={<ClearIcon />}
+                                onClick={clearFilters}
+                                size="small"
+                                variant="outlined"
+                                color="secondary"
+                                disabled={isLoadingFilters}
+                                aria-label="Clear all filters"
+                            >
+                                {isLoadingFilters ? 'Clearing...' : 'Clear All'}
+                            </Button>
+                        </Box>
+                        <Box className="filter-grid">
                             <TextField
                                 select
-                                fullWidth
+                                className="filter-field"
                                 label="Action Type"
                                 value={filters.actionType}
                                 onChange={(e) => handleFilterChange('actionType', e.target.value)}
                                 variant="outlined"
+                                size="small"
+                                disabled={isLoadingFilters}
+                                aria-label="Filter by action type"
                             >
-                                <MenuItem value="">All</MenuItem>
+                                <MenuItem value="">All Actions</MenuItem>
                                 <MenuItem value="assign">Assign</MenuItem>
                                 <MenuItem value="unassign">Unassign</MenuItem>
                                 <MenuItem value="update">Update</MenuItem>
                                 <MenuItem value="login">Login</MenuItem>
                                 <MenuItem value="logout">Logout</MenuItem>
                             </TextField>
-                        </Grid>
-                        <Grid grid={{ xs: 12, sm: 6, md: 2 }}>
+
                             <TextField
                                 select
-                                fullWidth
+                                className="filter-field"
                                 label="Target Type"
                                 value={filters.targetType}
                                 onChange={(e) => handleFilterChange('targetType', e.target.value)}
                                 variant="outlined"
+                                size="small"
+                                disabled={isLoadingFilters}
+                                aria-label="Filter by target type"
                             >
-                                <MenuItem value="">All</MenuItem>
+                                <MenuItem value="">All Types</MenuItem>
                                 <MenuItem value="phone_number">Phone Number</MenuItem>
                                 <MenuItem value="user">User</MenuItem>
                                 <MenuItem value="system">System</MenuItem>
                             </TextField>
-                        </Grid>
-                        <Grid grid={{ xs: 12, sm: 6, md: 2 }}>
+
                             <LocalizationProvider dateAdapter={AdapterDateFns}>
                                 <DatePicker
                                     label="Start Date"
                                     value={filters.startDate}
                                     onChange={(date) => handleFilterChange('startDate', date)}
-                                    slotProps={{ textField: { fullWidth: true } }}
+                                    textField={(params) => (
+                                        <TextField
+                                            {...params}
+                                            className="filter-field"
+                                            size="small"
+                                            variant="outlined"
+                                            disabled={isLoadingFilters}
+                                            aria-label="Filter by start date"
+                                        />
+                                    )}
                                 />
                             </LocalizationProvider>
-                        </Grid>
-                        <Grid grid={{ xs: 12, sm: 6, md: 2 }}>
+
                             <LocalizationProvider dateAdapter={AdapterDateFns}>
                                 <DatePicker
                                     label="End Date"
                                     value={filters.endDate}
                                     onChange={(date) => handleFilterChange('endDate', date)}
-                                    slotProps={{ textField: { fullWidth: true } }}
+                                    textField={(params) => (
+                                        <TextField
+                                            {...params}
+                                            className="filter-field"
+                                            size="small"
+                                            variant="outlined"
+                                            disabled={isLoadingFilters}
+                                            aria-label="Filter by end date"
+                                        />
+                                    )}
                                 />
                             </LocalizationProvider>
-                        </Grid>
-                        <Grid grid={{ xs: 12, md: 4 }}>
+
                             <TextField
-                                fullWidth
+                                className="filter-field filter-search"
                                 label="Search"
                                 value={filters.searchTerm}
-                                onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
-                                placeholder="Search by ID, username, or details..."
+                                onChange={(e) => debouncedSearch(e.target.value)}
+                                variant="outlined"
+                                size="small"
+                                disabled={isLoadingFilters}
                                 InputProps={{
-                                    startAdornment: <SearchIcon sx={{ color: 'action.active', mr: 1 }} />
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon color="action" />
+                                        </InputAdornment>
+                                    ),
                                 }}
+                                placeholder="Search by user, target ID, or any other field..."
+                                aria-label="Search activities"
                             />
-                        </Grid>
-                    </Grid>
-                </CardContent>
-            </Card>
+                        </Box>
+                    </CardContent>
+                </Card>
+            </Collapse>
 
-            <Card>
+            <Card className="data-grid-card">
                 <DataGrid
                     rows={activities}
                     columns={columns}
@@ -321,73 +581,115 @@ const Activity = () => {
                     loading={loading}
                     disableSelectionOnClick
                     paginationMode="server"
-                    sx={{
-                        height: 600,
-                        '& .MuiDataGrid-row:hover': {
-                            backgroundColor: theme.palette.action.hover
-                        }
+                    className="data-grid"
+                    error={error}
+                    components={{
+                        NoRowsOverlay: () => (
+                            <Stack height="100%" alignItems="center" justifyContent="center">
+                                <Typography color="textSecondary">
+                                    No activities found
+                                </Typography>
+                            </Stack>
+                        ),
+                        ErrorOverlay: () => (
+                            <Stack height="100%" alignItems="center" justifyContent="center">
+                                <Typography color="error">
+                                    {error || 'An error occurred while loading activities'}
+                                </Typography>
+                            </Stack>
+                        ),
+                        LoadingOverlay: () => (
+                            <Stack height="100%" alignItems="center" justifyContent="center">
+                                <CircularProgress />
+                            </Stack>
+                        )
                     }}
                 />
             </Card>
 
             <Dialog
                 open={openDialog}
-                onClose={() => setOpenDialog(false)}
+                onClose={handleCloseDialog}
                 maxWidth="md"
                 fullWidth
                 TransitionComponent={Fade}
                 transitionDuration={300}
+                className="details-dialog"
+                aria-labelledby="activity-details-title"
             >
-                <DialogTitle sx={{ pb: 1 }}>
-                    <Typography variant="h6" component="div">
+                <DialogTitle id="activity-details-title">
+                    <Typography variant="h6" component="div" className="activity-title">
                         Activity Details
                     </Typography>
                 </DialogTitle>
-                <Divider />
-                <DialogContent>
-                    {selectedActivity && (
-                        <Grid container spacing={2} sx={{ mt: 1 }}>
-                            {Object.entries(selectedActivity).map(([key, value]) => (
-                                <Grid grid={{ xs: 12 }} key={key}>
-                                    <Card variant="outlined">
-                                        <CardContent>
-                                            <Typography
-                                                variant="subtitle2"
-                                                color="textSecondary"
-                                                gutterBottom
-                                                sx={{ textTransform: 'capitalize' }}
-                                            >
-                                                {key.replace(/_/g, ' ')}
-                                            </Typography>
-                                            <Typography
-                                                variant="body1"
-                                                sx={{
-                                                    whiteSpace: 'pre-wrap',
-                                                    fontFamily: 'monospace',
-                                                    backgroundColor: theme.palette.grey[50],
-                                                    p: 1,
-                                                    borderRadius: 1
-                                                }}
-                                            >
-                                                {renderValue(value)}
-                                            </Typography>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                            ))}
-                        </Grid>
+                <DialogContent dividers>
+                    {isLoadingDetails ? (
+                        <Box display="flex" justifyContent="center" p={3}>
+                            <CircularProgress />
+                        </Box>
+                    ) : selectedActivity ? (
+                        <Stack spacing={2}>
+                            <Box className="details-section">
+                                <Typography variant="subtitle2" className="details-label">Action</Typography>
+                                <Chip
+                                    icon={getActionIcon(selectedActivity.action_type)}
+                                    label={selectedActivity.action_type}
+                                    color={getActionColor(selectedActivity.action_type)}
+                                    className="action-chip"
+                                />
+                            </Box>
+                            <Box className="details-section">
+                                <Typography variant="subtitle2" className="details-label">Target Type</Typography>
+                                <Typography variant="body1">{selectedActivity.target_type}</Typography>
+                            </Box>
+                            <Box className="details-section">
+                                <Typography variant="subtitle2" className="details-label">Target ID</Typography>
+                                <Typography variant="body1">{selectedActivity.target_id}</Typography>
+                            </Box>
+                            <Box className="details-section">
+                                <Typography variant="subtitle2" className="details-label">User</Typography>
+                                <Typography variant="body1">{selectedActivity.user_name}</Typography>
+                            </Box>
+                            <Box className="details-section">
+                                <Typography variant="subtitle2" className="details-label">Date</Typography>
+                                <Typography variant="body1">
+                                    {format(new Date(selectedActivity.created_at), 'yyyy-MM-dd HH:mm:ss')}
+                                </Typography>
+                            </Box>
+                            {selectedActivity.old_value && (
+                                <Box className="details-section">
+                                    <Typography variant="subtitle2" className="details-label">Previous Value</Typography>
+                                    <Typography variant="body1" component="pre" className="details-value">
+                                        {JSON.stringify(selectedActivity.old_value, null, 2)}
+                                    </Typography>
+                                </Box>
+                            )}
+                            {selectedActivity.new_value && (
+                                <Box className="details-section">
+                                    <Typography variant="subtitle2" className="details-label">New Value</Typography>
+                                    <Typography variant="body1" component="pre" className="details-value">
+                                        {JSON.stringify(selectedActivity.new_value, null, 2)}
+                                    </Typography>
+                                </Box>
+                            )}
+                        </Stack>
+                    ) : (
+                        <Box display="flex" justifyContent="center" p={3}>
+                            <Typography color="error">Failed to load activity details</Typography>
+                        </Box>
                     )}
                 </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    <Button
-                        onClick={() => setOpenDialog(false)}
-                        variant="contained"
-                        color="primary"
-                    >
-                        Close
-                    </Button>
+                <DialogActions>
+                    <Button onClick={handleCloseDialog}>Close</Button>
                 </DialogActions>
             </Dialog>
+
+            <Snackbar
+                open={!!successMessage}
+                autoHideDuration={6000}
+                onClose={handleCloseSuccess}
+                message={successMessage}
+            />
         </Box>
     );
 };

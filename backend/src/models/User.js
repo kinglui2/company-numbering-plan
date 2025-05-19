@@ -30,9 +30,9 @@ class User {
         return await bcrypt.compare(plainPassword, hashedPassword);
     }
 
-    static async createSession(userId) {
-        const token = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '24h' });
-        const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+    static async createSession(userId, token) {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const expires_at = new Date(decoded.exp * 1000); // Convert JWT exp to Date
 
         await db.query(
             'INSERT INTO user_sessions (user_id, token, expires_at) VALUES (?, ?, ?)',
@@ -47,7 +47,7 @@ class User {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             const [sessions] = await db.query(
                 'SELECT * FROM user_sessions WHERE user_id = ? AND token = ? AND expires_at > NOW()',
-                [decoded.userId, token]
+                [decoded.id, token]
             );
 
             if (sessions.length === 0) {
@@ -56,7 +56,7 @@ class User {
 
             const [users] = await db.query(
                 'SELECT id, username, email, role, is_active FROM users WHERE id = ?',
-                [decoded.userId]
+                [decoded.id]
             );
 
             return users[0];
@@ -75,4 +75,6 @@ class User {
             [userId]
         );
     }
-} 
+}
+
+module.exports = User; 

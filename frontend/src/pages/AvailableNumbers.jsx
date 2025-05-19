@@ -90,17 +90,17 @@ const AvailableNumbers = () => {
             sortable: false,
             filterable: false,
             renderCell: (params) => (
-                <div className="action-buttons">
+                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                     <Tooltip title="Assign Number">
                         <IconButton
                             size="small"
                             onClick={() => handleAssign(params.row)}
-                            className="action-button assign-button"
+                            sx={{ color: '#1976d2' }}
                         >
                             <FaUserPlus />
                         </IconButton>
                     </Tooltip>
-                </div>
+                </Box>
             ),
         },
     ];

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import { IconButton, Tooltip, CircularProgress, Alert, Box, Typography } from '@mui/material';
-import { FaEye, FaEdit, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaEye, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { phoneNumberService } from '../services/api';
 import '../styles/NumbersTable.css';
 
@@ -126,26 +126,17 @@ const NumbersTable = () => {
             sortable: false,
             filterable: false,
             renderCell: (params) => (
-                <div className="action-buttons">
+                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                     <Tooltip title="View Details">
                         <IconButton
                             size="small"
                             onClick={() => handleViewDetails(params.row)}
-                            className="action-button view-button"
+                            sx={{ color: '#1976d2' }}
                         >
                             <FaEye />
                         </IconButton>
                     </Tooltip>
-                    <Tooltip title="Edit Number">
-                        <IconButton
-                            size="small"
-                            onClick={() => handleEdit(params.row)}
-                            className="action-button edit-button"
-                        >
-                            <FaEdit />
-                        </IconButton>
-                    </Tooltip>
-                </div>
+                </Box>
             ),
         },
     ];
@@ -184,11 +175,6 @@ const NumbersTable = () => {
     const handleViewDetails = (row) => {
         // TODO: Implement view details functionality
         console.log('View details for:', row);
-    };
-
-    const handleEdit = (row) => {
-        // TODO: Implement edit functionality
-        console.log('Edit:', row);
     };
 
     if (error) {

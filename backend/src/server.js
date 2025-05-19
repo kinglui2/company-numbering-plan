@@ -4,6 +4,8 @@ require('dotenv').config();
 const phoneNumberRoutes = require('./routes/phoneNumbers');
 const authRoutes = require('./routes/auth');
 const activityRoutes = require('./routes/activity');
+const usersRoutes = require('./routes/users');
+const settingsRoutes = require('./routes/settings');
 const pool = require('./config/database');
 require('./cron/updateCooloff');
 
@@ -29,11 +31,13 @@ pool.getConnection()
 app.use('/api/auth', authRoutes);
 app.use('/api/phone-numbers', phoneNumberRoutes);
 app.use('/api/activity', activityRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
-    res.status(500).json({ error: 'Something went wrong!' });
+    res.status(500).json({ message: 'Something went wrong!' });
 });
 
 const PORT = process.env.PORT || 5000;

@@ -4,6 +4,8 @@ const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
 const phoneNumberRoutes = require('./routes/phoneNumbers');
 const activityRoutes = require('./routes/activity');
+const usersRoutes = require('./routes/users');
+const settingsRoutes = require('./routes/settings');
 const pool = require('./config/database');
 require('./cron/updateCooloff');
 
@@ -32,6 +34,8 @@ pool.getConnection()
 app.use('/api/auth', authRoutes);
 app.use('/api/phone-numbers', phoneNumberRoutes);
 app.use('/api/activity', activityRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

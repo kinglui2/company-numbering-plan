@@ -1,0 +1,119 @@
+.users-container {
+    padding: 24px;
+}
+
+.users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.users-title {
+    font-weight: 600;
+    color: #1a237e;
+}
+
+.users-table {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.users-table .MuiDataGrid-root {
+    border: none;
+}
+
+.users-table .MuiDataGrid-cell {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.users-table .MuiDataGrid-columnHeaders {
+    background-color: #f5f5f5;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.users-table .MuiDataGrid-row:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.action-buttons .MuiIconButton-root {
+    padding: 4px;
+}
+
+.action-buttons .MuiIconButton-root:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+.user-form {
+    padding: 16px 0;
+}
+
+.user-form .MuiTextField-root,
+.user-form .MuiFormControl-root {
+    margin-bottom: 16px;
+}
+
+/* Dialog styles */
+.MuiDialog-paper {
+    border-radius: 12px;
+}
+
+.MuiDialogTitle-root {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.MuiDialogContent-root {
+    padding: 24px;
+}
+
+.MuiDialogActions-root {
+    padding: 16px 24px;
+    border-top: 1px solid #e0e0e0;
+}
+
+/* Chip styles */
+.MuiChip-root {
+    font-weight: 500;
+}
+
+.MuiChip-root.MuiChip-colorPrimary {
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+
+.MuiChip-root.MuiChip-colorSuccess {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.MuiChip-root.MuiChip-colorError {
+    background-color: #fdecea;
+    color: #d32f2f;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .users-container {
+        padding: 16px;
+    }
+
+    .users-header {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+    }
+
+    .users-table {
+        margin: 0 -16px;
+        border-radius: 0;
+    }
+} 
