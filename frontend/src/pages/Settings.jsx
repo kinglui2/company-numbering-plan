@@ -37,19 +37,14 @@ function Settings() {
     const [systemConfig, setSystemConfig] = useState({
         cooloffPeriod: 90,
         defaultGateway: 'CS01',
-        numberFormat: 'standard',
-        enableNotifications: true
+        numberFormat: 'standard'
     });
 
-    // Security Settings
+    // Security Configuration
     const [securityConfig, setSecurityConfig] = useState({
-        passwordMinLength: 8,
-        requireSpecialChars: true,
-        requireNumbers: true,
-        requireUppercase: true,
-        sessionTimeout: 30,
-        enableTwoFactor: false,
-        maxLoginAttempts: 5
+        passwordExpiry: 'none',
+        maxLoginAttempts: 5,
+        sessionTimeout: 30
     });
 
     useEffect(() => {
@@ -78,14 +73,12 @@ function Settings() {
                 return acc;
             }, {});
 
-            // Convert string boolean values to actual booleans for security settings
-            const securitySettings = Object.entries(securityResponse.data).reduce((acc, [key, value]) => {
-                if (value === 'true') acc[key] = true;
-                else if (value === 'false') acc[key] = false;
-                else if (!isNaN(value)) acc[key] = Number(value);
-                else acc[key] = value;
-                return acc;
-            }, {});
+            // Ensure security settings have proper values with defaults
+            const securitySettings = {
+                passwordExpiry: securityResponse.data.passwordExpiry || 'none',
+                maxLoginAttempts: Number(securityResponse.data.maxLoginAttempts) || 5,
+                sessionTimeout: Number(securityResponse.data.sessionTimeout) || 30
+            };
 
             setSystemConfig(systemSettings);
             setSecurityConfig(securitySettings);
@@ -93,6 +86,12 @@ function Settings() {
         } catch (err) {
             setError('Failed to load settings');
             console.error('Error loading settings:', err);
+            // Set default values if API call fails
+            setSecurityConfig({
+                passwordExpiry: 'none',
+                maxLoginAttempts: 5,
+                sessionTimeout: 30
+            });
         } finally {
             setLoading(false);
         }
@@ -115,6 +114,7 @@ function Settings() {
     const handleSave = async () => {
         try {
             setSaving(true);
+            setError(null); // Clear any previous errors
             const token = localStorage.getItem('token');
             
             if (activeTab === 0) {
@@ -128,10 +128,14 @@ function Settings() {
             }
 
             setSuccess('Settings saved successfully');
-            setTimeout(() => setSuccess(null), 3000);
+            // Keep success message visible longer
+            setTimeout(() => setSuccess(null), 5000);
         } catch (err) {
-            setError('Failed to save settings');
             console.error('Error saving settings:', err);
+            // Show more detailed error message
+            const errorMessage = err.response?.data?.message || 'Failed to save settings. Please try again.';
+            setError(errorMessage);
+            // Keep error message visible until user dismisses it
         } finally {
             setSaving(false);
         }
@@ -156,13 +160,26 @@ function Settings() {
             </Typography>
 
             {error && (
-                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+                <Alert 
+                    severity="error" 
+                    sx={{ mb: 2 }} 
+                    onClose={() => setError(null)}
+                    action={
+                        <Button color="inherit" size="small" onClick={() => setError(null)}>
+                            Dismiss
+                        </Button>
+                    }
+                >
                     {error}
                 </Alert>
             )}
 
             {success && (
-                <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
+                <Alert 
+                    severity="success" 
+                    sx={{ mb: 2 }} 
+                    onClose={() => setSuccess(null)}
+                >
                     {success}
                 </Alert>
             )}
@@ -217,28 +234,11 @@ function Settings() {
                                         onChange={handleSystemConfigChange('numberFormat')}
                                         label="Number Format"
                                     >
-                                        <MenuItem value="standard">Standard (1234567890)</MenuItem>
-                                        <MenuItem value="formatted">Formatted (123-456-7890)</MenuItem>
+                                        <MenuItem value="standard">Standard (25420790XXXX)</MenuItem>
+                                        <MenuItem value="formatted">Formatted (020790XXXX)</MenuItem>
                                     </Select>
                                 </FormControl>
                             </Stack>
-                        </Box>
-
-                        <Divider />
-
-                        <Box>
-                            <Typography variant="h6" gutterBottom>
-                                Notifications
-                            </Typography>
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={systemConfig.enableNotifications}
-                                        onChange={handleSystemConfigChange('enableNotifications')}
-                                    />
-                                }
-                                label="Enable Email Notifications"
-                            />
                         </Box>
                     </Stack>
                 </Paper>
@@ -247,87 +247,46 @@ function Settings() {
                     <Stack spacing={3}>
                         <Box>
                             <Typography variant="h6" gutterBottom>
-                                Password Policy
+                                Security Settings
                             </Typography>
                             <Stack spacing={2}>
                                 <FormControl fullWidth>
+                                    <InputLabel>Password Expiry</InputLabel>
+                                    <Select
+                                        value={securityConfig.passwordExpiry}
+                                        onChange={handleSecurityConfigChange('passwordExpiry')}
+                                        label="Password Expiry"
+                                    >
+                                        <MenuItem value="none">None</MenuItem>
+                                        <MenuItem value="30">30 days</MenuItem>
+                                        <MenuItem value="60">60 days</MenuItem>
+                                        <MenuItem value="90">90 days</MenuItem>
+                                        <MenuItem value="180">180 days</MenuItem>
+                                        <MenuItem value="365">365 days</MenuItem>
+                                    </Select>
+                                </FormControl>
+
+                                <FormControl fullWidth>
                                     <TextField
-                                        label="Minimum Password Length"
+                                        label="Max Login Attempts"
                                         type="number"
-                                        value={securityConfig.passwordMinLength}
-                                        onChange={handleSecurityConfigChange('passwordMinLength')}
-                                        InputProps={{ inputProps: { min: 6, max: 32 } }}
+                                        value={securityConfig.maxLoginAttempts}
+                                        onChange={handleSecurityConfigChange('maxLoginAttempts')}
+                                        InputProps={{ inputProps: { min: 3, max: 10 } }}
+                                        helperText="Maximum number of failed login attempts before account lockout"
                                     />
                                 </FormControl>
 
-                                <FormControlLabel
-                                    control={
-                                        <Switch
-                                            checked={securityConfig.requireSpecialChars}
-                                            onChange={handleSecurityConfigChange('requireSpecialChars')}
-                                        />
-                                    }
-                                    label="Require Special Characters"
-                                />
-
-                                <FormControlLabel
-                                    control={
-                                        <Switch
-                                            checked={securityConfig.requireNumbers}
-                                            onChange={handleSecurityConfigChange('requireNumbers')}
-                                        />
-                                    }
-                                    label="Require Numbers"
-                                />
-
-                                <FormControlLabel
-                                    control={
-                                        <Switch
-                                            checked={securityConfig.requireUppercase}
-                                            onChange={handleSecurityConfigChange('requireUppercase')}
-                                        />
-                                    }
-                                    label="Require Uppercase Letters"
-                                />
-                            </Stack>
-                        </Box>
-
-                        <Divider />
-
-                        <Box>
-                            <Typography variant="h6" gutterBottom>
-                                Session Management
-                            </Typography>
-                            <Stack spacing={2}>
                                 <FormControl fullWidth>
                                     <TextField
                                         label="Session Timeout (minutes)"
                                         type="number"
                                         value={securityConfig.sessionTimeout}
                                         onChange={handleSecurityConfigChange('sessionTimeout')}
-                                        InputProps={{ inputProps: { min: 5, max: 1440 } }}
+                                        InputProps={{ inputProps: { min: 5, max: 120 } }}
+                                        helperText="Time of inactivity before automatic logout"
                                     />
                                 </FormControl>
-
-                                <FormControl fullWidth>
-                                    <TextField
-                                        label="Maximum Login Attempts"
-                                        type="number"
-                                        value={securityConfig.maxLoginAttempts}
-                                        onChange={handleSecurityConfigChange('maxLoginAttempts')}
-                                        InputProps={{ inputProps: { min: 3, max: 10 } }}
-                                    />
-                                </FormControl>
-
-                                <FormControlLabel
-                                    control={
-                                        <Switch
-                                            checked={securityConfig.enableTwoFactor}
-                                            onChange={handleSecurityConfigChange('enableTwoFactor')}
-                                        />
-                                    }
-                                    label="Enable Two-Factor Authentication"
-                                />
                             </Stack>
                         </Box>
                     </Stack>

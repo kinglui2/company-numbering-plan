@@ -18,7 +18,7 @@ import {
 import { styled } from '@mui/material/styles';
 import StarIcon from '@mui/icons-material/Star';
 import { phoneNumberService } from '../services/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
     padding: theme.spacing(3),
@@ -42,6 +42,7 @@ const FormSection = styled(Box)(({ theme }) => ({
 
 const Assign = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [loading, setLoading] = useState(false);
     const [availableNumbers, setAvailableNumbers] = useState([]);
     const [selectedNumber, setSelectedNumber] = useState(null);
@@ -59,7 +60,11 @@ const Assign = () => {
 
     useEffect(() => {
         fetchAvailableNumbers();
-    }, []);
+        // Check if we have a pre-selected number from navigation
+        if (location.state?.selectedNumber) {
+            setSelectedNumber(location.state.selectedNumber);
+        }
+    }, [location.state]);
 
     const fetchAvailableNumbers = async () => {
         try {
@@ -211,6 +216,7 @@ const Assign = () => {
                     filterOptions={filterOptions}
                     loading={loading}
                     onChange={handleNumberSelect}
+                    value={selectedNumber}
                     renderOption={(props, option) => (
                         <li {...props}>
                             <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>

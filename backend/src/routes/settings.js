@@ -3,12 +3,6 @@ const router = express.Router();
 const settingsController = require('../controllers/settingsController');
 const { auth, authorize } = require('../middleware/auth');
 
-// Debug middleware
-router.use((req, res, next) => {
-    console.log('Settings route accessed:', req.method, req.path);
-    next();
-});
-
 // All routes require authentication and manager role
 router.use(auth);
 router.use(authorize(['manager']));

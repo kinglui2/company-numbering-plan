@@ -4,9 +4,11 @@ import { DataGrid } from '@mui/x-data-grid';
 import { IconButton, Tooltip, CircularProgress, Alert } from '@mui/material';
 import { FaUserPlus } from 'react-icons/fa';
 import { phoneNumberService } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 import '../styles/NumbersTable.css';
 
 const AvailableNumbers = () => {
+    const navigate = useNavigate();
     const [numbers, setNumbers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -126,8 +128,11 @@ const AvailableNumbers = () => {
     };
 
     const handleAssign = (row) => {
-        // TODO: Implement assign functionality
-        console.log('Assign number:', row);
+        navigate('/assign', { 
+            state: { 
+                selectedNumber: row 
+            }
+        });
     };
 
     if (error) {

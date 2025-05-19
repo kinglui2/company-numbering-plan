@@ -4,13 +4,11 @@ const UserActivity = require('../models/UserActivity');
 const settingsController = {
     // Get system settings
     async getSystemSettings(req, res) {
-        console.log('getSystemSettings called');
         try {
             const [settings] = await db.query(
                 'SELECT * FROM system_settings WHERE category = ?',
                 ['system']
             );
-            console.log('System settings retrieved:', settings);
 
             // Convert settings array to object
             const systemSettings = settings.reduce((acc, setting) => {
@@ -20,7 +18,6 @@ const settingsController = {
 
             res.json(systemSettings);
         } catch (error) {
-            console.error('Error in getSystemSettings:', error);
             res.status(500).json({ message: 'Internal server error' });
         }
     },
@@ -65,20 +62,17 @@ const settingsController = {
 
             res.json({ message: 'System settings updated successfully' });
         } catch (error) {
-            console.error('Error in updateSystemSettings:', error);
             res.status(500).json({ message: 'Internal server error' });
         }
     },
 
     // Get security settings
     async getSecuritySettings(req, res) {
-        console.log('getSecuritySettings called');
         try {
             const [settings] = await db.query(
                 'SELECT * FROM system_settings WHERE category = ?',
                 ['security']
             );
-            console.log('Security settings retrieved:', settings);
 
             // Convert settings array to object
             const securitySettings = settings.reduce((acc, setting) => {
@@ -86,7 +80,10 @@ const settingsController = {
                 let value = setting.setting_value;
                 if (value === 'true') value = true;
                 else if (value === 'false') value = false;
-                else if (!isNaN(value)) value = Number(value);
+                else if (setting.setting_key === 'passwordExpiry') {
+                    // Keep passwordExpiry as string to handle 'none' value
+                    value = value;
+                } else if (!isNaN(value)) value = Number(value);
 
                 acc[setting.setting_key] = value;
                 return acc;
@@ -94,7 +91,6 @@ const settingsController = {
 
             res.json(securitySettings);
         } catch (error) {
-            console.error('Error in getSecuritySettings:', error);
             res.status(500).json({ message: 'Internal server error' });
         }
     },
@@ -112,44 +108,57 @@ const settingsController = {
             );
 
             const currentSettingsMap = currentSettings.reduce((acc, setting) => {
-                // Convert string values to appropriate types
-                let value = setting.setting_value;
-                if (value === 'true') value = true;
-                else if (value === 'false') value = false;
-                else if (!isNaN(value)) value = Number(value);
-
-                acc[setting.setting_key] = value;
+                acc[setting.setting_key] = setting.setting_value;
                 return acc;
             }, {});
 
             // Update each setting
             for (const [key, value] of Object.entries(settings)) {
-                // Convert boolean and number values to strings for storage
-                const stringValue = String(value);
+                let stringValue;
+                
+                // Handle different value types
+                if (value === null || value === undefined) {
+                    stringValue = '';
+                } else if (typeof value === 'boolean') {
+                    stringValue = value.toString();
+                } else if (key === 'passwordExpiry') {
+                    // Keep passwordExpiry as is (could be 'none' or a number)
+                    stringValue = value.toString();
+                } else if (typeof value === 'number') {
+                    stringValue = value.toString();
+                } else {
+                    stringValue = String(value);
+                }
 
-                await db.query(
-                    'INSERT INTO system_settings (category, setting_key, setting_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
-                    ['security', key, stringValue, stringValue]
-                );
+                try {
+                    await db.query(
+                        'INSERT INTO system_settings (category, setting_key, setting_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
+                        ['security', key, stringValue, stringValue]
+                    );
 
-                // Log the change if the value is different
-                if (currentSettingsMap[key] !== value) {
-                    await UserActivity.create({
-                        user_id: userId,
-                        action_type: 'update',
-                        target_type: 'security_setting',
-                        target_id: key,
-                        old_value: currentSettingsMap[key],
-                        new_value: value,
-                        ip_address: req.ip
-                    });
+                    // Log the change if the value is different
+                    if (currentSettingsMap[key] !== stringValue) {
+                        await UserActivity.create({
+                            user_id: userId,
+                            action_type: 'update',
+                            target_type: 'setting',
+                            target_id: key,
+                            old_value: currentSettingsMap[key],
+                            new_value: stringValue,
+                            ip_address: req.ip
+                        });
+                    }
+                } catch (dbError) {
+                    throw new Error(`Failed to update setting ${key}: ${dbError.message}`);
                 }
             }
 
             res.json({ message: 'Security settings updated successfully' });
         } catch (error) {
-            console.error('Error in updateSecuritySettings:', error);
-            res.status(500).json({ message: 'Internal server error' });
+            res.status(500).json({ 
+                message: 'Internal server error',
+                details: error.message 
+            });
         }
     }
 };

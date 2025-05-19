@@ -7,9 +7,15 @@ import {
     ToggleButtonGroup, 
     ToggleButton,
     IconButton,
-    Box
+    Box,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Button,
+    TextField
 } from '@mui/material';
-import { FaEye, FaEdit } from 'react-icons/fa';
+import { FaEye, FaEdit, FaUserMinus } from 'react-icons/fa';
 import { phoneNumberService } from '../services/api';
 import '../styles/assigned.css';
 
@@ -21,6 +27,9 @@ function AssignedNumbers() {
     const [pageSize, setPageSize] = useState(100);
     const [totalCount, setTotalCount] = useState(0);
     const [viewMode, setViewMode] = useState('assigned'); // 'assigned' or 'unassigned'
+    const [unassignDialogOpen, setUnassignDialogOpen] = useState(false);
+    const [selectedNumber, setSelectedNumber] = useState(null);
+    const [unassignNotes, setUnassignNotes] = useState('');
 
     const handleViewModeChange = (event, newMode) => {
         if (newMode !== null) {
@@ -33,7 +42,7 @@ function AssignedNumbers() {
         {
             field: 'full_number',
             headerName: 'Number',
-            width: 150,
+            width: 130,
             renderCell: (params) => (
                 <Tooltip title={params.value}>
                     <div>{params.value}</div>
@@ -43,7 +52,7 @@ function AssignedNumbers() {
         {
             field: 'subscriber_name',
             headerName: 'Subscriber',
-            width: 200,
+            width: 150,
             renderCell: (params) => (
                 <Tooltip title={params.value || 'N/A'}>
                     <div>{params.value || '-'}</div>
@@ -53,7 +62,7 @@ function AssignedNumbers() {
         {
             field: 'company_name',
             headerName: 'Company',
-            width: 200,
+            width: 150,
             renderCell: (params) => (
                 <Tooltip title={params.value || 'N/A'}>
                     <div>{params.value || '-'}</div>
@@ -63,7 +72,7 @@ function AssignedNumbers() {
         {
             field: 'gateway',
             headerName: 'Gateway',
-            width: 120,
+            width: 100,
             renderCell: (params) => (
                 <Tooltip title={params.value || 'N/A'}>
                     <div>{params.value || '-'}</div>
@@ -72,8 +81,8 @@ function AssignedNumbers() {
         },
         {
             field: 'gateway_username',
-            headerName: 'Gateway Username',
-            width: 150,
+            headerName: 'Gateway User',
+            width: 120,
             renderCell: (params) => (
                 <Tooltip title={params.value || 'N/A'}>
                     <div>{params.value || '-'}</div>
@@ -83,7 +92,7 @@ function AssignedNumbers() {
         {
             field: 'assignment_date',
             headerName: 'Assigned Date',
-            width: 150,
+            width: 120,
             renderCell: (params) => {
                 const formattedDate = params.value ? new Date(params.value).toLocaleDateString() : '-';
                 return (
@@ -95,8 +104,8 @@ function AssignedNumbers() {
         },
         {
             field: 'is_golden',
-            headerName: 'Golden Number',
-            width: 130,
+            headerName: 'Golden',
+            width: 90,
             renderCell: (params) => (
                 <div className={`golden-indicator ${params.value ? 'is-golden' : ''}`}>
                     {params.value ? 'Yes' : 'No'}
@@ -106,7 +115,7 @@ function AssignedNumbers() {
         {
             field: 'actions',
             headerName: 'Actions',
-            width: 120,
+            width: 150,
             sortable: false,
             renderCell: (params) => (
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
@@ -128,6 +137,18 @@ function AssignedNumbers() {
                             <FaEdit />
                         </IconButton>
                     </Tooltip>
+                    <Tooltip title="Unassign">
+                        <IconButton
+                            size="small"
+                            onClick={() => {
+                                setSelectedNumber(params.row);
+                                setUnassignDialogOpen(true);
+                            }}
+                            sx={{ color: '#d32f2f' }}
+                        >
+                            <FaUserMinus />
+                        </IconButton>
+                    </Tooltip>
                 </Box>
             ),
         },
@@ -137,7 +158,7 @@ function AssignedNumbers() {
         {
             field: 'full_number',
             headerName: 'Number',
-            width: 150,
+            width: 130,
             renderCell: (params) => (
                 <Tooltip title={params.value}>
                     <div>{params.value}</div>
@@ -147,7 +168,7 @@ function AssignedNumbers() {
         {
             field: 'unassignment_date',
             headerName: 'Last Unassigned',
-            width: 150,
+            width: 120,
             renderCell: (params) => {
                 if (!params.value) {
                     return <div>Never Assigned</div>;
@@ -162,8 +183,8 @@ function AssignedNumbers() {
         },
         {
             field: 'previous_company',
-            headerName: 'Previous Company',
-            width: 200,
+            headerName: 'Prev. Company',
+            width: 150,
             renderCell: (params) => (
                 <Tooltip title={params.value || 'Never Previously Assigned'}>
                     <div>{params.value || 'Never Previously Assigned'}</div>
@@ -172,8 +193,8 @@ function AssignedNumbers() {
         },
         {
             field: 'previous_subscriber',
-            headerName: 'Previous Subscriber',
-            width: 200,
+            headerName: 'Prev. Subscriber',
+            width: 150,
             renderCell: (params) => (
                 <Tooltip title={params.value || 'Never Previously Assigned'}>
                     <div>{params.value || 'Never Previously Assigned'}</div>
@@ -182,8 +203,8 @@ function AssignedNumbers() {
         },
         {
             field: 'is_golden',
-            headerName: 'Golden Number',
-            width: 130,
+            headerName: 'Golden',
+            width: 90,
             renderCell: (params) => (
                 <div className={`golden-indicator ${params.value ? 'is-golden' : ''}`}>
                     {params.value ? 'Yes' : 'No'}
@@ -265,6 +286,22 @@ function AssignedNumbers() {
         console.log('Edit:', row);
     };
 
+    const handleUnassign = async () => {
+        try {
+            setLoading(true);
+            await phoneNumberService.unassignNumber(selectedNumber.id, { notes: unassignNotes });
+            setUnassignDialogOpen(false);
+            setUnassignNotes('');
+            setSelectedNumber(null);
+            fetchNumbers(); // Refresh the list
+        } catch (err) {
+            setError('Failed to unassign number');
+            console.error('Error unassigning number:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="assigned-numbers-container">
             <div className="header-section">
@@ -320,7 +357,7 @@ function AssignedNumbers() {
             <div className="data-grid-container" style={{ 
                 height: 'calc(100vh - 250px)',
                 width: '100%',
-                minWidth: '800px'
+                minWidth: '0'
             }}>
                 <DataGrid
                     rows={numbers}
@@ -360,6 +397,21 @@ function AssignedNumbers() {
                         '& .MuiDataGrid-row': {
                             maxHeight: '52px !important',
                             minHeight: '52px !important'
+                        },
+                        '& .MuiDataGrid-cell': {
+                            padding: '0 8px !important'
+                        },
+                        '& .MuiDataGrid-columnHeaders': {
+                            backgroundColor: '#f5f5f5'
+                        },
+                        '& .MuiDataGrid-virtualScroller': {
+                            overflowX: 'hidden !important'
+                        },
+                        '& .MuiDataGrid-virtualScrollerContent': {
+                            minWidth: '100% !important'
+                        },
+                        '& .MuiDataGrid-virtualScrollerRenderZone': {
+                            minWidth: '100% !important'
                         }
                     }}
                     components={{
@@ -377,6 +429,48 @@ function AssignedNumbers() {
                     }}
                 />
             </div>
+
+            <Dialog 
+                open={unassignDialogOpen} 
+                onClose={() => {
+                    setUnassignDialogOpen(false);
+                    setUnassignNotes('');
+                    setSelectedNumber(null);
+                }}
+            >
+                <DialogTitle>Unassign Number</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ pt: 2 }}>
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={4}
+                            label="Unassignment Notes"
+                            value={unassignNotes}
+                            onChange={(e) => setUnassignNotes(e.target.value)}
+                            placeholder="Enter reason for unassigning this number..."
+                        />
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button 
+                        onClick={() => {
+                            setUnassignDialogOpen(false);
+                            setUnassignNotes('');
+                            setSelectedNumber(null);
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={handleUnassign}
+                        color="error"
+                        disabled={loading}
+                    >
+                        {loading ? <CircularProgress size={24} /> : 'Unassign'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </div>
     );
 }
