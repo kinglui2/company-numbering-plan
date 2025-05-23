@@ -4,27 +4,34 @@ const PhoneNumber = require('../models/phoneNumber');
 exports.getAllNumbers = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 15;
-        const availableOnly = req.query.available === 'true';
+        const limit = parseInt(req.query.limit) || 100;
+        const availableOnly = req.query.availableOnly === 'true';
 
-        // Get total count
-        const totalCount = await PhoneNumber.getCount(availableOnly);
+        // Extract filters from query parameters
+        const filters = {};
+        const allowedFilters = ['full_number', 'status', 'subscriber_name', 'company_name', 'gateway', 'is_golden'];
         
-        // Get paginated numbers
-        const numbers = await PhoneNumber.getAll(page, limit, availableOnly);
-        
+        allowedFilters.forEach(filter => {
+            if (req.query[filter] !== undefined) {
+                filters[filter] = req.query[filter];
+            }
+        });
+
+        // Get filtered numbers with pagination
+        const numbers = await PhoneNumber.getAll(page, limit, filters, availableOnly);
+        const total = await PhoneNumber.getCount(availableOnly, filters);
+
         res.json({
-            numbers: numbers,
+            numbers,
             pagination: {
-                total: totalCount,
-                page: page,
-                limit: limit,
-                totalPages: Math.ceil(totalCount / limit)
+                page,
+                limit,
+                total
             }
         });
     } catch (error) {
-        console.error('Error fetching numbers:', error);
-        res.status(500).json({ message: error.message });
+        console.error('Error in getAllNumbers:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
 

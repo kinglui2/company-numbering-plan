@@ -362,7 +362,23 @@ const Activity = () => {
             field: 'created_at',
             headerName: 'Date',
             width: 180,
-            valueFormatter: (params) => format(new Date(params.value), 'yyyy-MM-dd HH:mm:ss'),
+            valueFormatter: (params) => {
+                try {
+                    if (!params.value) return 'N/A';
+                    // Parse the UTC date from MySQL
+                    const date = new Date(params.value);
+                    if (isNaN(date.getTime())) {
+                        console.error('Invalid date value:', params.value);
+                        return 'Invalid Date';
+                    }
+                    // Convert to EAT (UTC+3)
+                    const eatDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
+                    return format(eatDate, 'yyyy-MM-dd HH:mm:ss');
+                } catch (error) {
+                    console.error('Error formatting date:', error, 'Value:', params.value);
+                    return 'Invalid Date';
+                }
+            },
             renderCell: (params) => (
                 <Typography variant="body2" className="cell-date">
                     {params.formattedValue}
@@ -653,7 +669,17 @@ const Activity = () => {
                             <Box className="details-section">
                                 <Typography variant="subtitle2" className="details-label">Date</Typography>
                                 <Typography variant="body1">
-                                    {format(new Date(selectedActivity.created_at), 'yyyy-MM-dd HH:mm:ss')}
+                                    {(() => {
+                                        try {
+                                            const date = new Date(selectedActivity.created_at);
+                                            if (isNaN(date.getTime())) return 'Invalid Date';
+                                            const eatDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
+                                            return format(eatDate, 'yyyy-MM-dd HH:mm:ss');
+                                        } catch (error) {
+                                            console.error('Error formatting date:', error);
+                                            return 'Invalid Date';
+                                        }
+                                    })()}
                                 </Typography>
                             </Box>
                             {selectedActivity.old_value && (

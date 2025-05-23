@@ -5,16 +5,20 @@ const API_URL = 'http://localhost:5000/api';
 export const phoneNumberService = {
     getAllNumbers: async (page = 1, limit = 100, filters = {}) => {
         try {
-            let url = `${API_URL}/phone-numbers?page=${page}&limit=${limit}`;
+            let url = new URL(`${API_URL}/phone-numbers`);
+            
+            // Add pagination parameters
+            url.searchParams.append('page', page);
+            url.searchParams.append('limit', limit);
             
             // Add filters if they exist
-            if (filters.items && filters.items.length > 0) {
-                filters.items.forEach(filter => {
-                    url += `&${filter.columnField}=${filter.value}`;
-                });
-            }
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value !== undefined && value !== '') {
+                    url.searchParams.append(key, value);
+                }
+            });
 
-            const response = await axios.get(url);
+            const response = await axios.get(url.toString());
             return response.data;
         } catch (error) {
             throw error;

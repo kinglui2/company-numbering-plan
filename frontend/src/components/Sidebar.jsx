@@ -58,13 +58,6 @@ function Sidebar() {
 
     return (
         <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
-            <div className="sidebar-header">
-                <img src="/logo.png" alt="Company Logo" className="logo" />
-                <button className="collapse-btn" onClick={toggleCollapse}>
-                    {isCollapsed ? <FaChevronRight /> : <FaChevronLeft />}
-                </button>
-            </div>
-
             <div className="user-profile">
                 <div className="avatar">{user?.username[0].toUpperCase()}</div>
                 {!isCollapsed && (
@@ -73,6 +66,13 @@ function Sidebar() {
                         <div className="role">{user?.role}</div>
                     </div>
                 )}
+                <button 
+                    className="collapse-btn" 
+                    onClick={toggleCollapse}
+                    title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                >
+                    {isCollapsed ? <FaChevronRight /> : <FaChevronLeft />}
+                </button>
             </div>
 
             <nav className="sidebar-nav">

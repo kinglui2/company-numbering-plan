@@ -1,13 +1,16 @@
 import axios from 'axios';
 import authService from './auth';
 
-const API_URL = 'http://localhost:5000/api/activity';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/activity';
 
 const activityService = {
     async getActivities(params = {}) {
         const token = authService.getToken();
+        if (!token) {
+            throw new Error('No authentication token found');
+        }
+        authService.setAuthHeader(token);
         const response = await axios.get(API_URL, {
-            headers: { Authorization: `Bearer ${token}` },
             params: {
                 page: params.page || 1,
                 limit: params.limit || 10,
@@ -24,8 +27,11 @@ const activityService = {
 
     async getActivityById(id, source) {
         const token = authService.getToken();
+        if (!token) {
+            throw new Error('No authentication token found');
+        }
+        authService.setAuthHeader(token);
         const response = await axios.get(`${API_URL}/${id}`, {
-            headers: { Authorization: `Bearer ${token}` },
             params: { source }
         });
         return response.data;

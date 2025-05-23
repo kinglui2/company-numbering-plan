@@ -3,6 +3,7 @@ import { DataGrid } from '@mui/x-data-grid';
 import { IconButton, Tooltip, CircularProgress, Alert, Box, Typography } from '@mui/material';
 import { FaEye, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { phoneNumberService } from '../services/api';
+import NumberDetailsModal from './NumberDetailsModal';
 import '../styles/NumbersTable.css';
 
 const NumbersTable = () => {
@@ -11,7 +12,13 @@ const NumbersTable = () => {
     const [error, setError] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize] = useState(100);
-    const [totalCount, setTotalCount] = useState(10000); // Set initial total count
+    const [totalCount, setTotalCount] = useState(0);
+    const [selectedNumber, setSelectedNumber] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [filterModel, setFilterModel] = useState({
+        items: [],
+        quickFilterLogicOperator: 'and',
+    });
 
     // Handle resize and navbar changes
     useEffect(() => {
@@ -31,7 +38,39 @@ const NumbersTable = () => {
 
     useEffect(() => {
         fetchNumbers();
-    }, [currentPage]);
+    }, [currentPage, filterModel]);
+
+    const fetchNumbers = async () => {
+        try {
+            setLoading(true);
+            const filters = {};
+            
+            // Convert filter model to API parameters
+            filterModel.items.forEach(filter => {
+                if (filter.value !== undefined && filter.value !== null && filter.value !== '') {
+                    filters[filter.field] = filter.value;
+                }
+            });
+
+            const response = await phoneNumberService.getAllNumbers(
+                currentPage,
+                pageSize,
+                filters
+            );
+            
+            setNumbers(response.numbers);
+            setTotalCount(response.pagination.total);
+            setLoading(false);
+        } catch (err) {
+            setError(err.message);
+            setLoading(false);
+        }
+    };
+
+    const handleFilterModelChange = (newModel) => {
+        setFilterModel(newModel);
+        setCurrentPage(1); // Reset to first page when filter changes
+    };
 
     const columns = [
         { 
@@ -141,40 +180,20 @@ const NumbersTable = () => {
         },
     ];
 
-    const fetchNumbers = async () => {
+    const handleViewDetails = async (row) => {
         try {
-            setLoading(true);
-            const response = await phoneNumberService.getAllNumbers(
-                currentPage,
-                pageSize
-            );
-            setNumbers(response.numbers);
-            // Only update total count if it's provided by the API
-            if (response.total_count) {
-                setTotalCount(response.total_count);
-            }
-            setLoading(false);
+            // Fetch detailed information about the number
+            const details = await phoneNumberService.getNumberById(row.id);
+            setSelectedNumber(details);
+            setIsModalOpen(true);
         } catch (err) {
-            setError(err.message);
-            setLoading(false);
+            setError('Failed to fetch number details. Please try again.');
         }
     };
 
-    const handlePreviousPage = () => {
-        if (currentPage > 1) {
-            setCurrentPage(prev => prev - 1);
-        }
-    };
-
-    const handleNextPage = () => {
-        if (currentPage * pageSize < totalCount) {
-            setCurrentPage(prev => prev + 1);
-        }
-    };
-
-    const handleViewDetails = (row) => {
-        // TODO: Implement view details functionality
-        console.log('View details for:', row);
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedNumber(null);
     };
 
     if (error) {
@@ -185,7 +204,7 @@ const NumbersTable = () => {
         );
     }
 
-    if (loading) {
+    if (loading && numbers.length === 0) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
                 <CircularProgress />
@@ -194,68 +213,78 @@ const NumbersTable = () => {
     }
 
     return (
-        <div className="numbers-table-container">
-            <DataGrid
-                rows={numbers}
-                columns={columns}
-                loading={loading}
-                disableRowSelectionOnClick
-                getRowId={(row) => row.id}
-                hideFooter={true}
-                autoHeight={false}
-                columnBuffer={2}
-                density="comfortable"
-                disableColumnMenu={false}
-                disableColumnFilter={false}
-                disableColumnSelector={false}
-                disableDensitySelector={false}
-                disableSelectionOnClick={true}
-                checkboxSelection={false}
-                sx={{
-                    '& .MuiDataGrid-cell:focus': {
-                        outline: 'none',
-                    },
-                    '& .MuiDataGrid-row:hover': {
-                        cursor: 'pointer',
-                    },
-                    '& .MuiDataGrid-root': {
-                        border: 'none',
-                        '& .MuiDataGrid-withBorderColor': {
-                            borderColor: 'transparent',
+        <>
+            <div className="numbers-table-container">
+                <DataGrid
+                    rows={numbers}
+                    columns={columns}
+                    loading={loading}
+                    disableRowSelectionOnClick
+                    getRowId={(row) => row.id}
+                    hideFooter={true}
+                    autoHeight={false}
+                    columnBuffer={2}
+                    density="comfortable"
+                    disableColumnMenu={false}
+                    disableColumnFilter={false}
+                    disableColumnSelector={false}
+                    disableDensitySelector={false}
+                    disableSelectionOnClick={true}
+                    checkboxSelection={false}
+                    filterMode="server"
+                    filterModel={filterModel}
+                    onFilterModelChange={handleFilterModelChange}
+                    sx={{
+                        '& .MuiDataGrid-cell:focus': {
+                            outline: 'none',
                         },
-                    },
-                    '& .MuiDataGrid-main': {
-                        overflow: 'hidden',
-                    },
-                    '& .MuiDataGrid-virtualScroller': {
-                        overflow: 'auto !important',
-                    },
-                    width: '100%',
-                    overflowX: 'hidden',
-                }}
-            />
-            <div className="pagination-container">
-                <div className="pagination-info">
-                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} numbers
-                </div>
-                <div className="pagination-buttons">
-                    <button 
-                        className="pagination-button"
-                        onClick={handlePreviousPage}
-                        disabled={currentPage === 1}
-                    >
-                        <FaChevronLeft />
-                    </button>
-                    <button 
-                        className="pagination-button"
-                        onClick={handleNextPage}
-                        disabled={currentPage * pageSize >= totalCount}
-                    >
-                        <FaChevronRight />
-                    </button>
+                        '& .MuiDataGrid-row:hover': {
+                            cursor: 'pointer',
+                        },
+                        '& .MuiDataGrid-root': {
+                            border: 'none',
+                            '& .MuiDataGrid-withBorderColor': {
+                                borderColor: 'transparent',
+                            },
+                        },
+                        '& .MuiDataGrid-main': {
+                            overflow: 'hidden',
+                        },
+                        '& .MuiDataGrid-virtualScroller': {
+                            overflow: 'auto !important',
+                        },
+                        width: '100%',
+                        overflowX: 'hidden',
+                    }}
+                />
+                <div className="pagination-container">
+                    <div className="pagination-info">
+                        Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} numbers
+                    </div>
+                    <div className="pagination-buttons">
+                        <button 
+                            className="pagination-button"
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                        >
+                            <FaChevronLeft />
+                        </button>
+                        <button 
+                            className="pagination-button"
+                            onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalCount / pageSize), prev + 1))}
+                            disabled={currentPage * pageSize >= totalCount}
+                        >
+                            <FaChevronRight />
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+            <NumberDetailsModal 
+                open={isModalOpen}
+                onClose={handleCloseModal}
+                numberDetails={selectedNumber}
+            />
+        </>
     );
 };
 

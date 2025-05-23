@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import logo from '../images/logo.png';
 
 function Login() {
     const [username, setUsername] = useState('');
@@ -32,15 +33,20 @@ function Login() {
     return (
         <div className="login-container">
             <div className="login-card">
-                <h2>Numbering Plan Management</h2>
+                <div className="login-logo">
+                    <img src={logo} alt="Company Logo" />
+                </div>
+                <h2>Welcome Back</h2>
+                <p className="login-subtitle">Sign in to continue to Numbering Plan Management</p>
+                
                 {error && (
                     <div className="alert alert-error">
                         {error}
                     </div>
                 )}
-                <form onSubmit={handleSubmit}>
+                
+                <form onSubmit={handleSubmit} className="login-form">
                     <div className="form-group">
-                        <label htmlFor="username">Username</label>
                         <input
                             id="username"
                             name="username"
@@ -48,10 +54,11 @@ function Login() {
                             required
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
+                            placeholder="Username"
+                            className="login-input"
                         />
                     </div>
                     <div className="form-group">
-                        <label htmlFor="password">Password</label>
                         <input
                             id="password"
                             name="password"
@@ -59,14 +66,16 @@ function Login() {
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Password"
+                            className="login-input"
                         />
                     </div>
                     <button
                         type="submit"
-                        className="btn btn-primary"
+                        className="btn btn-primary login-button"
                         disabled={loading}
                     >
-                        {loading ? 'Logging in...' : 'Sign in'}
+                        {loading ? 'Signing in...' : 'Sign in'}
                     </button>
                 </form>
             </div>

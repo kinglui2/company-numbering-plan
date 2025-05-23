@@ -2,16 +2,57 @@ const db = require('../config/db');
 
 class PhoneNumber {
     // Get all phone numbers with pagination
-    static async getAll(page = 1, limit = 10, availableOnly = false) {
+    static async getAll(page = 1, limit = 10, filters = {}, availableOnly = false) {
         try {
             const offset = (page - 1) * limit;
             let query = 'SELECT * FROM phone_numbers';
+            let whereConditions = [];
             let params = [];
 
             if (availableOnly) {
-                query += ' WHERE status = "available"';
+                whereConditions.push('status = "available"');
             }
 
+            // Handle filters
+            if (filters) {
+                Object.entries(filters).forEach(([field, value]) => {
+                    if (value !== undefined && value !== '') {
+                        switch (field) {
+                            case 'full_number':
+                                whereConditions.push('full_number LIKE ?');
+                                params.push(`%${value}%`);
+                                break;
+                            case 'status':
+                                whereConditions.push('status = ?');
+                                params.push(value);
+                                break;
+                            case 'subscriber_name':
+                                whereConditions.push('subscriber_name LIKE ?');
+                                params.push(`%${value}%`);
+                                break;
+                            case 'company_name':
+                                whereConditions.push('company_name LIKE ?');
+                                params.push(`%${value}%`);
+                                break;
+                            case 'gateway':
+                                whereConditions.push('gateway = ?');
+                                params.push(value);
+                                break;
+                            case 'is_golden':
+                                whereConditions.push('is_golden = ?');
+                                params.push(value === 'true' ? 1 : 0);
+                                break;
+                        }
+                    }
+                });
+            }
+
+            // Add WHERE clause if there are conditions
+            if (whereConditions.length > 0) {
+                query += ' WHERE ' + whereConditions.join(' AND ');
+            }
+
+            // Add ORDER BY and LIMIT
             query += ' ORDER BY full_number LIMIT ? OFFSET ?';
             params.push(limit, offset);
 
@@ -23,13 +64,53 @@ class PhoneNumber {
     }
 
     // Get total count of numbers
-    static async getCount(availableOnly = false) {
+    static async getCount(availableOnly = false, filters = {}) {
         try {
             let query = 'SELECT COUNT(*) as total FROM phone_numbers';
+            let whereConditions = [];
             let params = [];
 
             if (availableOnly) {
-                query += ' WHERE status = "available"';
+                whereConditions.push('status = "available"');
+            }
+
+            // Handle filters
+            if (filters) {
+                Object.entries(filters).forEach(([field, value]) => {
+                    if (value !== undefined && value !== '') {
+                        switch (field) {
+                            case 'full_number':
+                                whereConditions.push('full_number LIKE ?');
+                                params.push(`%${value}%`);
+                                break;
+                            case 'status':
+                                whereConditions.push('status = ?');
+                                params.push(value);
+                                break;
+                            case 'subscriber_name':
+                                whereConditions.push('subscriber_name LIKE ?');
+                                params.push(`%${value}%`);
+                                break;
+                            case 'company_name':
+                                whereConditions.push('company_name LIKE ?');
+                                params.push(`%${value}%`);
+                                break;
+                            case 'gateway':
+                                whereConditions.push('gateway = ?');
+                                params.push(value);
+                                break;
+                            case 'is_golden':
+                                whereConditions.push('is_golden = ?');
+                                params.push(value === 'true' ? 1 : 0);
+                                break;
+                        }
+                    }
+                });
+            }
+
+            // Add WHERE clause if there are conditions
+            if (whereConditions.length > 0) {
+                query += ' WHERE ' + whereConditions.join(' AND ');
             }
 
             const [rows] = await db.query(query, params);

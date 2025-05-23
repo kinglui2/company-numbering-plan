@@ -13,10 +13,16 @@ import {
     DialogContent,
     DialogActions,
     Button,
-    TextField
+    TextField,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    Stack
 } from '@mui/material';
 import { FaEye, FaEdit, FaUserMinus } from 'react-icons/fa';
 import { phoneNumberService } from '../services/api';
+import NumberDetailsModal from '../components/NumberDetailsModal';
 import '../styles/assigned.css';
 
 function AssignedNumbers() {
@@ -30,6 +36,18 @@ function AssignedNumbers() {
     const [unassignDialogOpen, setUnassignDialogOpen] = useState(false);
     const [selectedNumber, setSelectedNumber] = useState(null);
     const [unassignNotes, setUnassignNotes] = useState('');
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+    const [selectedNumberDetails, setSelectedNumberDetails] = useState(null);
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [editFormData, setEditFormData] = useState({
+        subscriber_name: '',
+        company_name: '',
+        gateway: '',
+        gateway_username: ''
+    });
+
+    // Available gateways in the system
+    const GATEWAYS = ['CS01', 'LS02'];
 
     const handleViewModeChange = (event, newMode) => {
         if (newMode !== null) {
@@ -276,14 +294,51 @@ function AssignedNumbers() {
         }
     };
 
-    const handleViewDetails = (row) => {
-        // TODO: Implement view details functionality
-        console.log('View details for:', row);
+    const handleViewDetails = async (row) => {
+        try {
+            // Fetch detailed information about the number
+            const details = await phoneNumberService.getNumberById(row.id);
+            setSelectedNumberDetails(details);
+            setIsDetailsModalOpen(true);
+        } catch (err) {
+            setError('Failed to fetch number details. Please try again.');
+        }
     };
 
-    const handleEdit = (row) => {
-        // TODO: Implement edit functionality
-        console.log('Edit:', row);
+    const handleCloseDetailsModal = () => {
+        setIsDetailsModalOpen(false);
+        setSelectedNumberDetails(null);
+    };
+
+    const handleEdit = async (row) => {
+        try {
+            // Fetch detailed information about the number
+            const details = await phoneNumberService.getNumberById(row.id);
+            setSelectedNumber(details);
+            setEditFormData({
+                subscriber_name: details.subscriber_name || '',
+                company_name: details.company_name || '',
+                gateway: details.gateway || '',
+                gateway_username: details.gateway_username || ''
+            });
+            setEditDialogOpen(true);
+        } catch (err) {
+            setError('Failed to fetch number details for editing. Please try again.');
+        }
+    };
+
+    const handleSave = async () => {
+        try {
+            setLoading(true);
+            await phoneNumberService.updateNumber(selectedNumber.id, editFormData);
+            setEditDialogOpen(false);
+            await fetchNumbers(); // Refresh the list
+            setError(null);
+        } catch (err) {
+            setError('Failed to update number. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleUnassign = async () => {
@@ -468,6 +523,77 @@ function AssignedNumbers() {
                         disabled={loading}
                     >
                         {loading ? <CircularProgress size={24} /> : 'Unassign'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <NumberDetailsModal 
+                open={isDetailsModalOpen}
+                onClose={handleCloseDetailsModal}
+                numberDetails={selectedNumberDetails}
+            />
+
+            {/* Edit Dialog */}
+            <Dialog 
+                open={editDialogOpen} 
+                onClose={() => setEditDialogOpen(false)}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle>Edit Number Details</DialogTitle>
+                <DialogContent>
+                    <Stack spacing={2} sx={{ pt: 2 }}>
+                        <TextField
+                            fullWidth
+                            size="small"
+                            label="Subscriber Name"
+                            value={editFormData.subscriber_name}
+                            onChange={(e) => setEditFormData(prev => ({
+                                ...prev,
+                                subscriber_name: e.target.value
+                            }))}
+                        />
+                        <TextField
+                            fullWidth
+                            size="small"
+                            label="Company Name"
+                            value={editFormData.company_name}
+                            onChange={(e) => setEditFormData(prev => ({
+                                ...prev,
+                                company_name: e.target.value
+                            }))}
+                        />
+                        <FormControl fullWidth size="small">
+                            <InputLabel>Gateway</InputLabel>
+                            <Select
+                                value={editFormData.gateway}
+                                label="Gateway"
+                                onChange={(e) => setEditFormData(prev => ({
+                                    ...prev,
+                                    gateway: e.target.value
+                                }))}
+                            >
+                                {GATEWAYS.map(gw => (
+                                    <MenuItem key={gw} value={gw}>{gw}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <TextField
+                            fullWidth
+                            size="small"
+                            label="Gateway Username"
+                            value={editFormData.gateway_username}
+                            onChange={(e) => setEditFormData(prev => ({
+                                ...prev,
+                                gateway_username: e.target.value
+                            }))}
+                        />
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSave} variant="contained" color="primary">
+                        Save Changes
                     </Button>
                 </DialogActions>
             </Dialog>
