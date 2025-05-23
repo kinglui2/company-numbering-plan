@@ -32,21 +32,21 @@ const phoneNumberController = {
                 params.push(`%${req.query.full_number}%`);
             }
 
+            // Handle is_golden filter
+            if (req.query.is_golden !== undefined) {
+                whereClause += ' AND is_golden = ?';
+                params.push(req.query.is_golden === 'true' ? 1 : 0);
+            }
+
             // Get total count
-            const [countResult] = await pool.query(
-                `SELECT COUNT(*) as total FROM phone_numbers WHERE 1=1 ${whereClause}`,
-                params
-            );
+            const countQuery = `SELECT COUNT(*) as total FROM phone_numbers WHERE 1=1 ${whereClause}`;
+            const [countResult] = await pool.query(countQuery, params);
             const total = countResult[0].total;
 
             // Get paginated data
-            const [numbers] = await pool.query(
-                `SELECT * FROM phone_numbers 
-                WHERE 1=1 ${whereClause}
-                ORDER BY full_number
-                LIMIT ? OFFSET ?`,
-                [...params, limit, offset]
-            );
+            const dataQuery = `SELECT * FROM phone_numbers WHERE 1=1 ${whereClause} ORDER BY full_number LIMIT ? OFFSET ?`;
+            const dataParams = [...params, limit, offset];
+            const [numbers] = await pool.query(dataQuery, dataParams);
 
             res.json({
                 numbers,

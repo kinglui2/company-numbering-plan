@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
-import { IconButton, Tooltip, CircularProgress, Alert, Box, Typography } from '@mui/material';
+import { IconButton, Tooltip, CircularProgress, Alert, Box, Typography, Button } from '@mui/material';
 import { FaEye, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import StarIcon from '@mui/icons-material/Star';
 import { phoneNumberService } from '../services/api';
 import NumberDetailsModal from './NumberDetailsModal';
 import '../styles/NumbersTable.css';
@@ -15,6 +16,7 @@ const NumbersTable = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [selectedNumber, setSelectedNumber] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [showGoldenOnly, setShowGoldenOnly] = useState(false);
     const [filterModel, setFilterModel] = useState({
         items: [],
         quickFilterLogicOperator: 'and',
@@ -38,7 +40,7 @@ const NumbersTable = () => {
 
     useEffect(() => {
         fetchNumbers();
-    }, [currentPage, filterModel]);
+    }, [currentPage, filterModel, showGoldenOnly]);
 
     const fetchNumbers = async () => {
         try {
@@ -51,6 +53,11 @@ const NumbersTable = () => {
                     filters[filter.field] = filter.value;
                 }
             });
+
+            // Add golden filter if enabled
+            if (showGoldenOnly) {
+                filters.is_golden = true;
+            }
 
             const response = await phoneNumberService.getAllNumbers(
                 currentPage,
@@ -70,6 +77,12 @@ const NumbersTable = () => {
     const handleFilterModelChange = (newModel) => {
         setFilterModel(newModel);
         setCurrentPage(1); // Reset to first page when filter changes
+    };
+
+    const handleGoldenToggle = () => {
+        const newShowGoldenOnly = !showGoldenOnly;
+        setShowGoldenOnly(newShowGoldenOnly);
+        setCurrentPage(1); // Reset to first page when toggling
     };
 
     const columns = [
@@ -214,6 +227,23 @@ const NumbersTable = () => {
 
     return (
         <>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 2 }}>
+                <Button
+                    variant={showGoldenOnly ? "contained" : "outlined"}
+                    color="warning"
+                    onClick={handleGoldenToggle}
+                    startIcon={<StarIcon />}
+                    sx={{ 
+                        color: showGoldenOnly ? 'white' : 'gold',
+                        borderColor: showGoldenOnly ? 'transparent' : 'gold',
+                        '&:hover': {
+                            borderColor: showGoldenOnly ? 'transparent' : 'gold',
+                        }
+                    }}
+                >
+                    Golden Numbers
+                </Button>
+            </Box>
             <div className="numbers-table-container">
                 <DataGrid
                     rows={numbers}
