@@ -272,62 +272,104 @@ const phoneNumberController = {
             const limit = parseInt(req.query.limit) || 10;
             const offset = (page - 1) * limit;
 
-            console.log('Fetching numbers by status:', { status, page, limit, offset });
+            console.log('Fetching numbers by status:', { status, page, limit, offset, filters: req.query });
 
             // Validate status
             if (!['assigned', 'unassigned'].includes(status)) {
                 return res.status(400).json({ error: 'Invalid status. Must be either "assigned" or "unassigned"' });
             }
 
+            // Build WHERE conditions
+            let whereConditions = [`status = ?`];
+            let params = [status];
+
+            // Handle golden numbers filter
+            if (req.query.is_golden === 'true') {
+                whereConditions.push('is_golden = 1');
+            }
+
+            // Handle assigned numbers filters
+            if (status === 'assigned') {
+                if (req.query.company_name) {
+                    whereConditions.push('LOWER(company_name) LIKE LOWER(?)');
+                    params.push(`%${req.query.company_name}%`);
+                }
+                if (req.query.subscriber_name) {
+                    whereConditions.push('LOWER(subscriber_name) LIKE LOWER(?)');
+                    params.push(`%${req.query.subscriber_name}%`);
+                }
+                if (req.query.gateway) {
+                    whereConditions.push('gateway = ?');
+                    params.push(req.query.gateway);
+                }
+            } else if (status === 'unassigned') {
+                // Handle unassigned numbers filters
+                if (req.query.previous_company) {
+                    whereConditions.push('LOWER(company_name) LIKE LOWER(?)');
+                    params.push(`%${req.query.previous_company}%`);
+                }
+                if (req.query.previous_subscriber) {
+                    whereConditions.push('LOWER(subscriber_name) LIKE LOWER(?)');
+                    params.push(`%${req.query.previous_subscriber}%`);
+                }
+            }
+
             // Get total count
-            const [countResult] = await pool.query(
-                'SELECT COUNT(*) as total FROM phone_numbers WHERE status = ?',
-                [status]
-            );
+            const countQuery = `
+                SELECT COUNT(*) as total 
+                FROM phone_numbers 
+                WHERE ${whereConditions.join(' AND ')}
+            `;
+
+            console.log('Count Query:', countQuery);
+            console.log('Count Params:', params);
+
+            const [countResult] = await pool.query(countQuery, params);
             const total = countResult[0].total;
 
-            console.log('Total count:', total);
-
             // Get paginated data with all necessary fields
-            const query = `                SELECT 
+            const dataQuery = `
+                SELECT 
                     id,
                     full_number,
                     status,
                     is_golden,
-                    subscriber_name,
                     company_name,
+                    subscriber_name,
+                    gateway,
+                    gateway_username,
                     assignment_date,
                     unassignment_date,
-                    gateway,
-                    gateway_username
+                    CASE 
+                        WHEN status = 'unassigned' THEN company_name
+                        ELSE NULL 
+                    END as previous_company,
+                    CASE 
+                        WHEN status = 'unassigned' THEN subscriber_name
+                        ELSE NULL 
+                    END as previous_subscriber
                 FROM phone_numbers 
-                WHERE status = ?
-                ORDER BY full_number
+                WHERE ${whereConditions.join(' AND ')}
+                ORDER BY full_number 
                 LIMIT ? OFFSET ?
             `;
 
-            const [numbers] = await pool.query(query, [status, limit, offset]);
-            console.log('Fetched numbers:', numbers.length);
+            const dataParams = [...params, limit, offset];
+            console.log('Data Query:', dataQuery);
+            console.log('Data Params:', dataParams);
 
-            const response = {
+            const [numbers] = await pool.query(dataQuery, dataParams);
+
+            res.json({
                 numbers,
                 total,
                 page,
                 totalPages: Math.ceil(total / limit)
-            };
-
-            console.log('Sending response:', {
-                numberCount: numbers.length,
-                total,
-                page,
-                totalPages: Math.ceil(total / limit)
             });
-
-            res.json(response);
         } catch (error) {
-            console.error(`Error fetching ${req.params.status} numbers:`, error);
+            console.error('Error in getNumbersByStatus:', error);
             res.status(500).json({ 
-                error: `Failed to fetch ${req.params.status} numbers`,
+                error: 'Failed to fetch numbers by status',
                 details: error.message 
             });
         }

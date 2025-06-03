@@ -282,29 +282,29 @@ class PhoneNumber {
                 whereConditions.push('is_golden = 1');
             }
 
-            // Handle number range filter using subscriber_number field
-            if (filters.range_start || filters.range_end) {
-                if (filters.range_start) {
-                    whereConditions.push('CAST(subscriber_number AS UNSIGNED) >= ?');
-                    params.push(parseInt(filters.range_start, 10));
+            // Handle number range filter
+            if (filters.number_range) {
+                if (filters.number_range.start) {
+                    whereConditions.push('SUBSTRING(full_number, -4) >= ?');
+                    params.push(filters.number_range.start.padStart(4, '0'));
                 }
-                if (filters.range_end) {
-                    whereConditions.push('CAST(subscriber_number AS UNSIGNED) <= ?');
-                    params.push(parseInt(filters.range_end, 10));
+                if (filters.number_range.end) {
+                    whereConditions.push('SUBSTRING(full_number, -4) <= ?');
+                    params.push(filters.number_range.end.padStart(4, '0'));
                 }
             }
 
-            // Handle subscriber search using subscriber_number field
+            // Handle subscriber search
             if (filters.subscriber_search) {
-                whereConditions.push('subscriber_number LIKE ?');
-                params.push(`%${filters.subscriber_search}%`);
+                whereConditions.push('SUBSTRING(full_number, -4) = ?');
+                params.push(filters.subscriber_search.padStart(4, '0'));
             }
 
             // Add WHERE clause
             query += ' WHERE ' + whereConditions.join(' AND ');
 
             // Add ORDER BY and LIMIT
-            query += ' ORDER BY CAST(subscriber_number AS UNSIGNED) LIMIT ? OFFSET ?';
+            query += ' ORDER BY full_number LIMIT ? OFFSET ?';
             params.push(limit, offset);
 
             const [rows] = await db.query(query, params);
@@ -329,22 +329,22 @@ class PhoneNumber {
                 whereConditions.push('is_golden = 1');
             }
 
-            // Handle number range filter using subscriber_number field
-            if (filters.range_start || filters.range_end) {
-                if (filters.range_start) {
-                    whereConditions.push('CAST(subscriber_number AS UNSIGNED) >= ?');
-                    params.push(parseInt(filters.range_start, 10));
+            // Handle number range filter
+            if (filters.number_range) {
+                if (filters.number_range.start) {
+                    whereConditions.push('SUBSTRING(full_number, -4) >= ?');
+                    params.push(filters.number_range.start.padStart(4, '0'));
                 }
-                if (filters.range_end) {
-                    whereConditions.push('CAST(subscriber_number AS UNSIGNED) <= ?');
-                    params.push(parseInt(filters.range_end, 10));
+                if (filters.number_range.end) {
+                    whereConditions.push('SUBSTRING(full_number, -4) <= ?');
+                    params.push(filters.number_range.end.padStart(4, '0'));
                 }
             }
 
-            // Handle subscriber search using subscriber_number field
+            // Handle subscriber search
             if (filters.subscriber_search) {
-                whereConditions.push('subscriber_number LIKE ?');
-                params.push(`%${filters.subscriber_search}%`);
+                whereConditions.push('SUBSTRING(full_number, -4) = ?');
+                params.push(filters.subscriber_search.padStart(4, '0'));
             }
 
             // Add WHERE clause

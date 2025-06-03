@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Typography, Paper, IconButton, Tooltip, CircularProgress, Alert, TextField, Button, Stack, Switch, FormControlLabel, InputAdornment } from '@mui/material';
 import { DataGrid, gridPageCountSelector, gridPageSelector, useGridApiContext, useGridSelector } from '@mui/x-data-grid';
 import { FaUserPlus, FaFileExport, FaSearch } from 'react-icons/fa';
@@ -21,59 +21,29 @@ const AvailableNumbers = () => {
     const [showGoldenOnly, setShowGoldenOnly] = useState(false);
     const [numberRange, setNumberRange] = useState({ start: '', end: '' });
     const [subscriberSearch, setSubscriberSearch] = useState('');
-    const [filterTimeout, setFilterTimeout] = useState(null);
+    const [quickSearchTimeout, setQuickSearchTimeout] = useState(null);
 
-    // Memoize fetchNumbers to prevent unnecessary re-renders
-    const fetchNumbers = useCallback(async () => {
-        try {
-            setLoading(true);
-            const response = await phoneNumberService.getAvailableNumbers(
-                paginationModel.page + 1,
-                paginationModel.pageSize,
-                {
-                    is_golden: showGoldenOnly || undefined,
-                    range_start: numberRange.start || undefined,
-                    range_end: numberRange.end || undefined,
-                    subscriber_search: subscriberSearch || undefined
-                }
-            );
-            setNumbers(response.numbers);
-            setRowCount(response.total_count || 0);
-            setError(null);
-        } catch (err) {
-            setError('Failed to load available numbers');
-            console.error('Error fetching available numbers:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, [paginationModel.page, paginationModel.pageSize, showGoldenOnly, numberRange.start, numberRange.end, subscriberSearch]);
-
-    // Combined effect for all filter changes with debouncing
     useEffect(() => {
-        if (filterTimeout) {
-            clearTimeout(filterTimeout);
+        fetchNumbers();
+    }, [paginationModel.page, paginationModel.pageSize, showGoldenOnly, numberRange.start, numberRange.end]);
+
+    useEffect(() => {
+        if (quickSearchTimeout) {
+            clearTimeout(quickSearchTimeout);
         }
 
         const timeout = setTimeout(() => {
-            setPaginationModel(prev => ({ ...prev, page: 0 })); // Reset to first page
             fetchNumbers();
         }, 300);
 
-        setFilterTimeout(timeout);
+        setQuickSearchTimeout(timeout);
 
         return () => {
-            if (filterTimeout) {
-                clearTimeout(filterTimeout);
+            if (quickSearchTimeout) {
+                clearTimeout(quickSearchTimeout);
             }
         };
-    }, [showGoldenOnly, numberRange.start, numberRange.end, subscriberSearch, fetchNumbers]);
-
-    // Handle pagination changes separately
-    useEffect(() => {
-        if (!filterTimeout) { // Only fetch if not already fetching due to filter change
-            fetchNumbers();
-        }
-    }, [paginationModel.page, paginationModel.pageSize, fetchNumbers, filterTimeout]);
+    }, [subscriberSearch]);
 
     const columns = [
         { 
@@ -165,25 +135,17 @@ const AvailableNumbers = () => {
 
     const handleGoldenToggle = () => {
         setShowGoldenOnly(prev => !prev);
+        setPaginationModel(prev => ({ ...prev, page: 0 }));
     };
 
     const handleRangeChange = (field) => (event) => {
         const value = event.target.value;
         if (value.length <= 4 && /^\d*$/.test(value)) {
-            const newRange = {
-                ...numberRange,
+            setNumberRange(prev => ({
+                ...prev,
                 [field]: value
-            };
-            
-            // Validate range (start should be less than or equal to end)
-            if (field === 'start' && newRange.end && parseInt(value) > parseInt(newRange.end)) {
-                return; // Don't update if start is greater than end
-            }
-            if (field === 'end' && newRange.start && parseInt(value) < parseInt(newRange.start)) {
-                return; // Don't update if end is less than start
-            }
-            
-            setNumberRange(newRange);
+            }));
+            setPaginationModel(prev => ({ ...prev, page: 0 }));
         }
     };
 
@@ -191,6 +153,7 @@ const AvailableNumbers = () => {
         const value = event.target.value;
         if (value.length <= 4 && /^\d*$/.test(value)) {
             setSubscriberSearch(value);
+            setPaginationModel(prev => ({ ...prev, page: 0 }));
         }
     };
 
@@ -227,6 +190,30 @@ const AvailableNumbers = () => {
         } catch (error) {
             setError('Failed to export numbers');
             console.error('Error exporting numbers:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchNumbers = async () => {
+        try {
+            setLoading(true);
+            const response = await phoneNumberService.getAvailableNumbers(
+                paginationModel.page + 1,
+                paginationModel.pageSize,
+                {
+                    is_golden: showGoldenOnly || undefined,
+                    range_start: numberRange.start || undefined,
+                    range_end: numberRange.end || undefined,
+                    subscriber_search: subscriberSearch || undefined
+                }
+            );
+            setNumbers(response.numbers);
+            setRowCount(response.total_count || 0);
+            setError(null);
+        } catch (err) {
+            setError('Failed to load available numbers');
+            console.error('Error fetching available numbers:', err);
         } finally {
             setLoading(false);
         }
@@ -284,8 +271,6 @@ const AvailableNumbers = () => {
                                 size="small"
                                 inputProps={{ maxLength: 4 }}
                                 sx={{ width: '100px' }}
-                                error={numberRange.end && parseInt(numberRange.start) > parseInt(numberRange.end)}
-                                helperText={numberRange.end && parseInt(numberRange.start) > parseInt(numberRange.end) ? 'Start should be ≤ End' : ''}
                             />
                             <Typography>to</Typography>
                             <TextField
@@ -295,8 +280,6 @@ const AvailableNumbers = () => {
                                 size="small"
                                 inputProps={{ maxLength: 4 }}
                                 sx={{ width: '100px' }}
-                                error={numberRange.start && parseInt(numberRange.end) < parseInt(numberRange.start)}
-                                helperText={numberRange.start && parseInt(numberRange.end) < parseInt(numberRange.start) ? 'End should be ≥ Start' : ''}
                             />
                         </Stack>
                         <TextField
@@ -312,7 +295,6 @@ const AvailableNumbers = () => {
                                 ),
                             }}
                             sx={{ width: '150px' }}
-                            helperText="Enter full or partial number"
                         />
                     </Stack>
                     <Button
@@ -330,17 +312,15 @@ const AvailableNumbers = () => {
                             rows={numbers}
                             columns={columns}
                             loading={loading}
-                            rowCount={rowCount}
-                            pageSizeOptions={[100]}
-                            paginationModel={paginationModel}
-                            paginationMode="server"
-                            onPaginationModelChange={setPaginationModel}
-                            disableColumnFilter
-                            disableColumnSelector
-                            disableDensitySelector
+                        rowCount={rowCount}
+                        pageSizeOptions={[100]}
+                        paginationModel={paginationModel}
+                        paginationMode="server"
+                        onPaginationModelChange={setPaginationModel}
+                        disableColumnFilter
+                        disableColumnSelector
+                        disableDensitySelector
                             getRowId={(row) => row.id}
-                            keepNonExistentRowsSelected
-                            autoHeight
                             sx={{
                                 '& .MuiDataGrid-cell:focus': {
                                     outline: 'none',

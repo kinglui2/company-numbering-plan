@@ -18,7 +18,9 @@ import {
     InputLabel,
     Select,
     MenuItem,
-    Stack
+    Stack,
+    FormControlLabel,
+    Switch
 } from '@mui/material';
 import { FaEye, FaEdit, FaUserMinus } from 'react-icons/fa';
 import { phoneNumberService } from '../services/api';
@@ -39,6 +41,16 @@ function AssignedNumbers() {
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [selectedNumberDetails, setSelectedNumberDetails] = useState(null);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
+    
+    // Filter states
+    const [showGoldenOnly, setShowGoldenOnly] = useState(false);
+    const [companySearch, setCompanySearch] = useState('');
+    const [subscriberSearch, setSubscriberSearch] = useState('');
+    const [selectedGateway, setSelectedGateway] = useState('');
+    const [prevCompanySearch, setPrevCompanySearch] = useState('');
+    const [prevSubscriberSearch, setPrevSubscriberSearch] = useState('');
+    const [filterTimeout, setFilterTimeout] = useState(null);
+
     const [editFormData, setEditFormData] = useState({
         subscriber_name: '',
         company_name: '',
@@ -48,13 +60,6 @@ function AssignedNumbers() {
 
     // Available gateways in the system
     const GATEWAYS = ['CS01', 'LS02'];
-
-    const handleViewModeChange = (event, newMode) => {
-        if (newMode !== null) {
-            setViewMode(newMode);
-            setPage(1);
-        }
-    };
 
     const assignedColumns = [
         {
@@ -259,40 +264,81 @@ function AssignedNumbers() {
         },
     ];
 
+    // Effect for handling filter changes
     useEffect(() => {
-        fetchNumbers();
-    }, [page, pageSize, viewMode]);
+        if (filterTimeout) {
+            clearTimeout(filterTimeout);
+        }
+
+        const timeout = setTimeout(() => {
+            setPage(1); // Reset to first page when filters change
+            fetchNumbers();
+        }, 300); // Debounce filter changes
+
+        setFilterTimeout(timeout);
+
+        return () => {
+            if (filterTimeout) {
+                clearTimeout(filterTimeout);
+            }
+        };
+    }, [showGoldenOnly, companySearch, subscriberSearch, selectedGateway, 
+        prevCompanySearch, prevSubscriberSearch, viewMode]);
 
     const fetchNumbers = async () => {
         try {
             setLoading(true);
-            setError(null);
+            const filters = {
+                is_golden: showGoldenOnly ? true : undefined,
+                ...(viewMode === 'assigned' ? {
+                    company_name: companySearch?.trim() || undefined,
+                    subscriber_name: subscriberSearch?.trim() || undefined,
+                    gateway: selectedGateway || undefined
+                } : {
+                    previous_company: prevCompanySearch?.trim() || undefined,
+                    previous_subscriber: prevSubscriberSearch?.trim() || undefined
+                })
+            };
             
-            console.log('Making request with:', { viewMode, page, pageSize });
-            
-            const response = await phoneNumberService.getNumbersByStatus(
-                viewMode,
-                page,
-                pageSize
+            // Remove any undefined values
+            Object.keys(filters).forEach(key => 
+                filters[key] === undefined && delete filters[key]
             );
             
-            console.log('API Response:', response);
-            
-            if (!response.numbers) {
-                throw new Error('Invalid response format from server');
-            }
-            
-            setNumbers(response.numbers);
-            setTotalCount(response.total);
+            const response = await phoneNumberService.getNumbersByStatus(viewMode, page, pageSize, filters);
+            setNumbers(response.numbers || []);
+            setTotalCount(response.total || 0);
+            setError(null);
         } catch (err) {
-            console.error('Error fetching numbers:', err);
-            setError(err.message || 'Failed to fetch numbers. Please try again later.');
-            setNumbers([]);
-            setTotalCount(0);
+            setError(`Failed to load ${viewMode} numbers`);
+            console.error(`Error fetching ${viewMode} numbers:`, err);
         } finally {
             setLoading(false);
         }
     };
+
+    // Clear filters function
+    const clearFilters = () => {
+        setShowGoldenOnly(false);
+        setCompanySearch('');
+        setSubscriberSearch('');
+        setSelectedGateway('');
+        setPrevCompanySearch('');
+        setPrevSubscriberSearch('');
+        setPage(1); // Reset to first page when clearing filters
+    };
+
+    const handleViewModeChange = (event, newMode) => {
+        if (newMode !== null) {
+            setViewMode(newMode);
+            setPage(1);
+            clearFilters(); // Clear filters when switching views
+        }
+    };
+
+    useEffect(() => {
+        fetchNumbers();
+    }, [page, pageSize, viewMode]);
 
     const handleViewDetails = async (row) => {
         try {
@@ -359,32 +405,118 @@ function AssignedNumbers() {
 
     return (
         <div className="assigned-numbers-container">
-            <div className="header-section">
-                <h1>Number Assignment Status</h1>
-                <ToggleButtonGroup
-                    value={viewMode}
-                    exclusive
-                    onChange={handleViewModeChange}
-                    aria-label="number status view"
-                    className="view-toggle"
+            <Box sx={{ width: '100%', mb: 2 }}>
+                <Stack 
+                    direction={{ xs: 'column', sm: 'row' }} 
+                    spacing={2} 
+                    alignItems="center" 
+                    justifyContent="space-between"
+                    sx={{ mb: 2 }}
                 >
-                    <ToggleButton value="assigned" aria-label="assigned numbers">
-                        Assigned
-                    </ToggleButton>
-                    <ToggleButton value="unassigned" aria-label="unassigned numbers">
-                        Unassigned
-                    </ToggleButton>
-                </ToggleButtonGroup>
-            </div>
+                    <ToggleButtonGroup
+                        value={viewMode}
+                        exclusive
+                        onChange={handleViewModeChange}
+                        aria-label="number status view"
+                        sx={{
+                            '& .MuiToggleButton-root': {
+                                '&.Mui-selected': {
+                                    backgroundColor: '#4caf50',
+                                    color: 'white',
+                                    '&:hover': {
+                                        backgroundColor: '#43a047'
+                                    }
+                                }
+                            }
+                        }}
+                    >
+                        <ToggleButton value="assigned" aria-label="assigned numbers">
+                            Assigned
+                        </ToggleButton>
+                        <ToggleButton value="unassigned" aria-label="unassigned numbers">
+                            Unassigned
+                        </ToggleButton>
+                    </ToggleButtonGroup>
 
-            <div className="info-box">
-                <p>
-                    {viewMode === 'assigned' 
-                        ? 'Currently assigned numbers with their subscriber and gateway details.'
-                        : 'Numbers available for assignment with their previous assignment history.'}
-                </p>
-            </div>
-            
+                    {/* Filters Section */}
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+                        <FormControlLabel
+                            control={
+                                <Switch
+                                    checked={showGoldenOnly}
+                                    onChange={(e) => setShowGoldenOnly(e.target.checked)}
+                                    color="primary"
+                                />
+                            }
+                            label="Golden Numbers Only"
+                        />
+                        
+                        {viewMode === 'assigned' ? (
+                            <>
+                                <TextField
+                                    label="Company"
+                                    value={companySearch}
+                                    onChange={(e) => setCompanySearch(e.target.value)}
+                                    size="small"
+                                    sx={{ width: '150px' }}
+                                />
+                                <TextField
+                                    label="Subscriber"
+                                    value={subscriberSearch}
+                                    onChange={(e) => setSubscriberSearch(e.target.value)}
+                                    size="small"
+                                    sx={{ width: '150px' }}
+                                />
+                                <FormControl size="small" sx={{ width: '150px' }}>
+                                    <InputLabel>Gateway</InputLabel>
+                                    <Select
+                                        value={selectedGateway}
+                                        onChange={(e) => setSelectedGateway(e.target.value)}
+                                        label="Gateway"
+                                    >
+                                        <MenuItem value="">
+                                            <em>Any</em>
+                                        </MenuItem>
+                                        {GATEWAYS.map(gateway => (
+                                            <MenuItem key={gateway} value={gateway}>
+                                                {gateway}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </>
+                        ) : (
+                            <>
+                                <TextField
+                                    label="Previous Company"
+                                    value={prevCompanySearch}
+                                    onChange={(e) => setPrevCompanySearch(e.target.value)}
+                                    size="small"
+                                    sx={{ width: '150px' }}
+                                />
+                                <TextField
+                                    label="Previous Subscriber"
+                                    value={prevSubscriberSearch}
+                                    onChange={(e) => setPrevSubscriberSearch(e.target.value)}
+                                    size="small"
+                                    sx={{ width: '150px' }}
+                                />
+                            </>
+                        )}
+                        
+                        <Button
+                            variant="outlined"
+                            onClick={clearFilters}
+                            disabled={!showGoldenOnly && !companySearch && !subscriberSearch && 
+                                    !selectedGateway && !prevCompanySearch && !prevSubscriberSearch}
+                            size="small"
+                        >
+                            Clear Filters
+                        </Button>
+                    </Stack>
+                </Stack>
+            </Box>
+
             {error && (
                 <Alert 
                     severity="error" 

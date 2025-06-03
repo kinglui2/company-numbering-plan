@@ -113,12 +113,21 @@ export const phoneNumberService = {
         }
     },
 
-    getNumbersByStatus: async (status, page = 1, limit = 100) => {
+    getNumbersByStatus: async (status, page = 1, limit = 100, filters = {}) => {
         try {
+            // Clean up filters by removing undefined/empty values
+            const cleanFilters = Object.entries(filters).reduce((acc, [key, value]) => {
+                if (value !== undefined && value !== '' && value !== null) {
+                    acc[key] = value;
+                }
+                return acc;
+            }, {});
+
             const response = await axios.get(`${API_URL}/phone-numbers/status/${status}`, {
                 params: {
                     page,
-                    limit
+                    limit,
+                    ...cleanFilters
                 }
             });
             
