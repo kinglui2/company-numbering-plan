@@ -31,6 +31,8 @@ const activityController = {
                 offset: offset
             });
 
+            console.log('Activities being sent from backend:', activities);
+
             // Get total count for pagination
             const total = await UserActivity.countAll({
                 actionType,

@@ -51,12 +51,9 @@ const Activity = () => {
     const theme = useTheme();
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isLoadingDetails, setIsLoadingDetails] = useState(false);
     const [isLoadingFilters, setIsLoadingFilters] = useState(false);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
-    const [selectedActivity, setSelectedActivity] = useState(null);
-    const [openDialog, setOpenDialog] = useState(false);
     const [showFilters, setShowFilters] = useState(true);
     
     // Filters
@@ -77,7 +74,6 @@ const Activity = () => {
     const cleanupData = useCallback(() => {
         // Clear all data states
         setActivities([]);
-        setSelectedActivity(null);
         setError(null);
         setSuccessMessage(null);
         
@@ -97,14 +93,8 @@ const Activity = () => {
         
         // Reset loading states
         setLoading(false);
-        setIsLoadingDetails(false);
         setIsLoadingFilters(false);
-        
-        // Close dialog if open
-        if (openDialog) {
-            setOpenDialog(false);
-        }
-    }, [openDialog]);
+    }, []);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -245,28 +235,6 @@ const Activity = () => {
         }
     };
 
-    const handleViewDetails = async (activity) => {
-        try {
-            setIsLoadingDetails(true);
-            const details = await activityService.getActivityById(activity.id);
-            setSelectedActivity(details);
-            setOpenDialog(true);
-        } catch (err) {
-            const errorMessage = getErrorMessage(err);
-            setError(errorMessage);
-            console.error('Error fetching activity details:', err);
-        } finally {
-            setIsLoadingDetails(false);
-        }
-    };
-
-    // Cleanup when dialog is closed
-    const handleCloseDialog = () => {
-        setOpenDialog(false);
-        setSelectedActivity(null);
-        setIsLoadingDetails(false);
-    };
-
     const handleCloseError = () => {
         setError(null);
     };
@@ -314,16 +282,19 @@ const Activity = () => {
             field: 'action_type',
             headerName: 'Action',
             width: 150,
-            renderCell: (params) => (
-                <Chip
-                    icon={getActionIcon(params.value)}
-                    label={params.value}
-                    color={getActionColor(params.value)}
-                    variant="outlined"
-                    size="small"
-                    className="action-chip"
-                />
-            )
+            renderCell: (params) => {
+                const actionValue = typeof params === 'string' ? params : params.value;
+                return (
+                    <Chip
+                        icon={getActionIcon(actionValue)}
+                        label={actionValue}
+                        color={getActionColor(actionValue)}
+                        variant="outlined"
+                        size="small"
+                        className="action-chip"
+                    />
+                );
+            }
         },
         {
             field: 'target_type',
@@ -364,18 +335,14 @@ const Activity = () => {
             width: 180,
             valueFormatter: (params) => {
                 try {
-                    if (!params.value) return 'N/A';
-                    // Parse the UTC date from MySQL
-                    const date = new Date(params.value);
-                    if (isNaN(date.getTime())) {
-                        console.error('Invalid date value:', params.value);
-                        return 'Invalid Date';
-                    }
-                    // Convert to EAT (UTC+3)
-                    const eatDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
-                    return format(eatDate, 'yyyy-MM-dd HH:mm:ss');
+                    const dateString = typeof params === 'string' ? params : params.value;
+                    if (!dateString) return 'N/A';
+                    
+                    const date = new Date(dateString);
+                    if (isNaN(date.getTime())) return 'Invalid Date';
+                    
+                    return format(date, 'yyyy-MM-dd HH:mm:ss');
                 } catch (error) {
-                    console.error('Error formatting date:', error, 'Value:', params.value);
                     return 'Invalid Date';
                 }
             },
@@ -383,22 +350,6 @@ const Activity = () => {
                 <Typography variant="body2" className="cell-date">
                     {params.formattedValue}
                 </Typography>
-            )
-        },
-        {
-            field: 'actions',
-            headerName: 'Actions',
-            width: 100,
-            sortable: false,
-            renderCell: (params) => (
-                <Tooltip title="View Details">
-                    <IconButton
-                        onClick={() => handleViewDetails(params.row)}
-                        size="small"
-                    >
-                        <InfoIcon fontSize="small" />
-                    </IconButton>
-                </Tooltip>
             )
         }
     ];
@@ -622,93 +573,6 @@ const Activity = () => {
                     }}
                 />
             </Card>
-
-            <Dialog
-                open={openDialog}
-                onClose={handleCloseDialog}
-                maxWidth="md"
-                fullWidth
-                TransitionComponent={Fade}
-                transitionDuration={300}
-                className="details-dialog"
-                aria-labelledby="activity-details-title"
-            >
-                <DialogTitle id="activity-details-title">
-                    <Typography variant="h6" component="div" className="activity-title">
-                        Activity Details
-                    </Typography>
-                </DialogTitle>
-                <DialogContent dividers>
-                    {isLoadingDetails ? (
-                        <Box display="flex" justifyContent="center" p={3}>
-                            <CircularProgress />
-                        </Box>
-                    ) : selectedActivity ? (
-                        <Stack spacing={2}>
-                            <Box className="details-section">
-                                <Typography variant="subtitle2" className="details-label">Action</Typography>
-                                <Chip
-                                    icon={getActionIcon(selectedActivity.action_type)}
-                                    label={selectedActivity.action_type}
-                                    color={getActionColor(selectedActivity.action_type)}
-                                    className="action-chip"
-                                />
-                            </Box>
-                            <Box className="details-section">
-                                <Typography variant="subtitle2" className="details-label">Target Type</Typography>
-                                <Typography variant="body1">{selectedActivity.target_type}</Typography>
-                            </Box>
-                            <Box className="details-section">
-                                <Typography variant="subtitle2" className="details-label">Target ID</Typography>
-                                <Typography variant="body1">{selectedActivity.target_id}</Typography>
-                            </Box>
-                            <Box className="details-section">
-                                <Typography variant="subtitle2" className="details-label">User</Typography>
-                                <Typography variant="body1">{selectedActivity.user_name}</Typography>
-                            </Box>
-                            <Box className="details-section">
-                                <Typography variant="subtitle2" className="details-label">Date</Typography>
-                                <Typography variant="body1">
-                                    {(() => {
-                                        try {
-                                            const date = new Date(selectedActivity.created_at);
-                                            if (isNaN(date.getTime())) return 'Invalid Date';
-                                            const eatDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
-                                            return format(eatDate, 'yyyy-MM-dd HH:mm:ss');
-                                        } catch (error) {
-                                            console.error('Error formatting date:', error);
-                                            return 'Invalid Date';
-                                        }
-                                    })()}
-                                </Typography>
-                            </Box>
-                            {selectedActivity.old_value && (
-                                <Box className="details-section">
-                                    <Typography variant="subtitle2" className="details-label">Previous Value</Typography>
-                                    <Typography variant="body1" component="pre" className="details-value">
-                                        {JSON.stringify(selectedActivity.old_value, null, 2)}
-                                    </Typography>
-                                </Box>
-                            )}
-                            {selectedActivity.new_value && (
-                                <Box className="details-section">
-                                    <Typography variant="subtitle2" className="details-label">New Value</Typography>
-                                    <Typography variant="body1" component="pre" className="details-value">
-                                        {JSON.stringify(selectedActivity.new_value, null, 2)}
-                                    </Typography>
-                                </Box>
-                            )}
-                        </Stack>
-                    ) : (
-                        <Box display="flex" justifyContent="center" p={3}>
-                            <Typography color="error">Failed to load activity details</Typography>
-                        </Box>
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleCloseDialog}>Close</Button>
-                </DialogActions>
-            </Dialog>
 
             <Snackbar
                 open={!!successMessage}

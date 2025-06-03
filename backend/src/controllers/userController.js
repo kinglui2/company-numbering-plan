@@ -11,21 +11,40 @@ const userController = {
 
             // Get users with pagination
             const [users] = await db.query(
-                `SELECT id, username, email, role, is_active, last_login, created_at 
+                `SELECT 
+                    id, 
+                    username, 
+                    email, 
+                    role, 
+                    is_active,
+                    last_login,
+                    DATE_FORMAT(last_login, '%Y-%m-%d %H:%i:%s') as formatted_last_login,
+                    created_at 
                 FROM users 
                 ORDER BY created_at DESC 
                 LIMIT ? OFFSET ?`,
                 [parseInt(pageSize), offset]
             );
 
+            console.log('Raw database results:', JSON.stringify(users, null, 2));
+            console.log('Sample user data:', users[0]);
+
+            const formattedUsers = users.map(user => ({
+                ...user,
+                last_login: user.formatted_last_login
+            }));
+
             // Get total count
             const [total] = await db.query('SELECT COUNT(*) as count FROM users');
 
-            res.json({
-                rows: users,
+            const response = {
+                rows: formattedUsers,
                 rowCount: total[0].count,
                 pageCount: Math.ceil(total[0].count / pageSize)
-            });
+            };
+
+            console.log('Final response:', JSON.stringify(response, null, 2));
+            res.json(response);
         } catch (error) {
             console.error('Error in getUsers:', error);
             res.status(500).json({ message: 'Internal server error' });

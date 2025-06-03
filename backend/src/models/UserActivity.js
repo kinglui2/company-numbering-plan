@@ -35,7 +35,8 @@ class UserActivity {
         let query = `
             SELECT 
                 ua.*,
-                u.username as user_name
+                u.username as user_name,
+                DATE_FORMAT(ua.created_at, '%Y-%m-%d %H:%i:%s') as created_at
             FROM user_activities ua
             LEFT JOIN users u ON ua.user_id = u.id
             WHERE 1=1
@@ -89,7 +90,10 @@ class UserActivity {
             }
         }
 
+        console.log('Executing query:', query);
+        console.log('With params:', params);
         const [rows] = await db.query(query, params);
+        console.log('Query results:', rows);
         return rows;
     }
 

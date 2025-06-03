@@ -15,6 +15,7 @@ import {
     Typography,
     Chip,
     Alert,
+    Tooltip,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { Add as AddIcon, Edit as EditIcon, Block as BlockIcon, CheckCircle as CheckCircleIcon, Delete as DeleteIcon } from '@mui/icons-material';
@@ -50,8 +51,6 @@ const Users = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
-            console.log('Fetching users with token:', token);
-            console.log('Request params:', { page, pageSize });
             
             const response = await axios.get(`${API_URL}/users`, {
                 headers: {
@@ -62,8 +61,6 @@ const Users = () => {
                     pageSize,
                 },
             });
-            
-            console.log('API Response:', response.data);
             
             if (response.data && Array.isArray(response.data.rows)) {
                 setUsers(response.data.rows);
@@ -225,10 +222,32 @@ const Users = () => {
             field: 'last_login',
             headerName: 'Last Login',
             flex: 1,
-            valueFormatter: (params) => {
-                if (!params || !params.value) return 'Never';
-                const date = new Date(params.value);
-                return isNaN(date.getTime()) ? 'Never' : date.toLocaleString();
+            renderCell: (params) => {
+                if (!params.value) return 'Never';
+                try {
+                    const date = new Date(params.value);
+                    if (isNaN(date.getTime())) return 'Never';
+                    
+                    // Format for East Africa Time (UTC+3)
+                    const formattedDate = new Intl.DateTimeFormat('en-US', {
+                        timeZone: 'Africa/Nairobi',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: 'numeric',
+                        hour12: true
+                    }).format(date);
+
+                    return (
+                        <Tooltip title={formattedDate}>
+                            <div>{formattedDate}</div>
+                        </Tooltip>
+                    );
+                } catch (error) {
+                    console.error('Error formatting date:', error);
+                    return 'Never';
+                }
             },
         },
         {
@@ -293,7 +312,31 @@ const Users = () => {
                     getRowId={(row) => row.id}
                     rowCount={rowCount}
                     paginationMode="server"
-                    sx={{ width: '100%' }}
+                    sx={{ 
+                        width: '100%',
+                        '& .MuiDataGrid-cell': {
+                            padding: '8px !important'
+                        },
+                        '& .MuiDataGrid-columnHeaders': {
+                            backgroundColor: '#f5f5f5'
+                        }
+                    }}
+                    initialState={{
+                        pagination: {
+                            paginationModel: {
+                                pageSize: pageSize,
+                                page: page
+                            },
+                        },
+                    }}
+                    paginationModel={{
+                        page: page,
+                        pageSize
+                    }}
+                    onPaginationModelChange={(model) => {
+                        setPage(model.page);
+                        setPageSize(model.pageSize);
+                    }}
                 />
             </Box>
 

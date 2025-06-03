@@ -263,8 +263,7 @@ const phoneNumberController = {
             console.log('Total count:', total);
 
             // Get paginated data with all necessary fields
-            const query = `
-                SELECT 
+            const query = `                SELECT 
                     id,
                     full_number,
                     status,
