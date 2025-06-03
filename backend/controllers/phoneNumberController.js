@@ -117,4 +117,46 @@ exports.getGoldenNumbers = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
+};
+
+// Get available numbers
+exports.getAvailableNumbers = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 100;
+        const filters = {
+            status: 'unassigned'
+        };
+
+        // Handle golden numbers filter
+        if (req.query.is_golden === 'true') {
+            filters.is_golden = true;
+        }
+
+        // Handle range filter
+        if (req.query.range_start || req.query.range_end) {
+            filters.number_range = {
+                start: req.query.range_start,
+                end: req.query.range_end
+            };
+        }
+
+        // Handle subscriber search
+        if (req.query.subscriber_search) {
+            filters.subscriber_search = req.query.subscriber_search;
+        }
+
+        // Get filtered numbers with pagination
+        const numbers = await PhoneNumber.getAvailableNumbers(page, limit, filters);
+        const total = await PhoneNumber.getAvailableCount(filters);
+
+        res.json({
+            numbers,
+            total_count: total,
+            page
+        });
+    } catch (error) {
+        console.error('Error in getAvailableNumbers:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 }; 

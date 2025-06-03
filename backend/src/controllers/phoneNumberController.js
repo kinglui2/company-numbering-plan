@@ -109,18 +109,47 @@ const phoneNumberController = {
             const limit = parseInt(req.query.limit) || 100;
             const fetchAll = req.query.fetchAll === 'true';
 
+            console.log('Available Numbers Query Params:', req.query);
+
+            // Build WHERE conditions
+            const whereConditions = [
+                "status = 'unassigned'",
+                "(unassignment_date IS NULL OR unassignment_date <= DATE_SUB(NOW(), INTERVAL 90 DAY))"
+            ];
+            const params = [];
+
+            // Add golden filter
+            if (req.query.is_golden === 'true') {
+                whereConditions.push('is_golden = 1');
+            }
+
+            // Add range filter
+            if (req.query.range_start) {
+                whereConditions.push('CAST(subscriber_number AS UNSIGNED) >= ?');
+                params.push(parseInt(req.query.range_start, 10));
+            }
+            if (req.query.range_end) {
+                whereConditions.push('CAST(subscriber_number AS UNSIGNED) <= ?');
+                params.push(parseInt(req.query.range_end, 10));
+            }
+
+            // Add subscriber search
+            if (req.query.subscriber_search) {
+                whereConditions.push('subscriber_number LIKE ?');
+                params.push(`%${req.query.subscriber_search}%`);
+            }
+
             // Get total count of available numbers
             const countQuery = `
                 SELECT COUNT(*) as total 
                 FROM phone_numbers 
-                WHERE status = 'unassigned' 
-                AND (
-                    unassignment_date IS NULL 
-                    OR unassignment_date <= DATE_SUB(NOW(), INTERVAL 90 DAY)
-                )
+                WHERE ${whereConditions.join(' AND ')}
             `;
 
-            const [countResult] = await pool.query(countQuery);
+            console.log('Count Query:', countQuery);
+            console.log('Count Params:', params);
+
+            const [countResult] = await pool.query(countQuery, params);
             const total = countResult[0].total;
 
             // Get available numbers with properly formatted full_number
@@ -138,27 +167,24 @@ const phoneNumberController = {
                     gateway,
                     assignment_date,
                     unassignment_date,
+                    subscriber_number,
                     CASE 
                         WHEN unassignment_date IS NULL THEN 'Never Assigned'
                         ELSE CONCAT(DATEDIFF(NOW(), unassignment_date), ' days since unassignment')
                     END as assignment_status
                 FROM phone_numbers 
-                WHERE status = 'unassigned' 
-                AND (
-                    unassignment_date IS NULL 
-                    OR unassignment_date <= DATE_SUB(NOW(), INTERVAL 90 DAY)
-                )
-                ORDER BY 
-                    CASE 
-                        WHEN unassignment_date IS NULL THEN 0 
-                        ELSE 1 
-                    END,
-                    full_number
+                WHERE ${whereConditions.join(' AND ')}
+                ORDER BY CAST(subscriber_number AS UNSIGNED)
                 ${!fetchAll ? 'LIMIT ? OFFSET ?' : ''}
             `;
 
-            const queryParams = fetchAll ? [] : [limit, (page - 1) * limit];
+            console.log('Numbers Query:', numbersQuery);
+            console.log('Numbers Params:', fetchAll ? params : [...params, limit, (page - 1) * limit]);
+
+            const queryParams = fetchAll ? params : [...params, limit, (page - 1) * limit];
             const [numbers] = await pool.query(numbersQuery, queryParams);
+
+            console.log(`Found ${numbers.length} numbers out of ${total} total`);
 
             res.json({
                 numbers,

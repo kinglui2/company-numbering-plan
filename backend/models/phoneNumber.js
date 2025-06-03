@@ -265,6 +265,97 @@ class PhoneNumber {
             throw error;
         }
     }
+
+    // Get available numbers
+    static async getAvailableNumbers(page = 1, limit = 100, filters = {}) {
+        try {
+            const offset = (page - 1) * limit;
+            let query = 'SELECT * FROM phone_numbers';
+            let whereConditions = ['status = "unassigned"'];
+            let params = [];
+
+            // Add cooloff period check
+            whereConditions.push('(unassignment_date IS NULL OR unassignment_date <= DATE_SUB(NOW(), INTERVAL 90 DAY))');
+
+            // Handle golden numbers filter
+            if (filters.is_golden) {
+                whereConditions.push('is_golden = 1');
+            }
+
+            // Handle number range filter using subscriber_number field
+            if (filters.range_start || filters.range_end) {
+                if (filters.range_start) {
+                    whereConditions.push('CAST(subscriber_number AS UNSIGNED) >= ?');
+                    params.push(parseInt(filters.range_start, 10));
+                }
+                if (filters.range_end) {
+                    whereConditions.push('CAST(subscriber_number AS UNSIGNED) <= ?');
+                    params.push(parseInt(filters.range_end, 10));
+                }
+            }
+
+            // Handle subscriber search using subscriber_number field
+            if (filters.subscriber_search) {
+                whereConditions.push('subscriber_number LIKE ?');
+                params.push(`%${filters.subscriber_search}%`);
+            }
+
+            // Add WHERE clause
+            query += ' WHERE ' + whereConditions.join(' AND ');
+
+            // Add ORDER BY and LIMIT
+            query += ' ORDER BY CAST(subscriber_number AS UNSIGNED) LIMIT ? OFFSET ?';
+            params.push(limit, offset);
+
+            const [rows] = await db.query(query, params);
+            return rows;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Get count of available numbers
+    static async getAvailableCount(filters = {}) {
+        try {
+            let query = 'SELECT COUNT(*) as total FROM phone_numbers';
+            let whereConditions = ['status = "unassigned"'];
+            let params = [];
+
+            // Add cooloff period check
+            whereConditions.push('(unassignment_date IS NULL OR unassignment_date <= DATE_SUB(NOW(), INTERVAL 90 DAY))');
+
+            // Handle golden numbers filter
+            if (filters.is_golden) {
+                whereConditions.push('is_golden = 1');
+            }
+
+            // Handle number range filter using subscriber_number field
+            if (filters.range_start || filters.range_end) {
+                if (filters.range_start) {
+                    whereConditions.push('CAST(subscriber_number AS UNSIGNED) >= ?');
+                    params.push(parseInt(filters.range_start, 10));
+                }
+                if (filters.range_end) {
+                    whereConditions.push('CAST(subscriber_number AS UNSIGNED) <= ?');
+                    params.push(parseInt(filters.range_end, 10));
+                }
+            }
+
+            // Handle subscriber search using subscriber_number field
+            if (filters.subscriber_search) {
+                whereConditions.push('subscriber_number LIKE ?');
+                params.push(`%${filters.subscriber_search}%`);
+            }
+
+            // Add WHERE clause
+            query += ' WHERE ' + whereConditions.join(' AND ');
+
+            const [rows] = await db.query(query, params);
+            return rows[0].total;
+        } catch (error) {
+            throw error;
+        }
+    }
 }
 
 module.exports = PhoneNumber; 

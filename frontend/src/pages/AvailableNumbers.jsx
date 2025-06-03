@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper } from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
-import { IconButton, Tooltip, CircularProgress, Alert } from '@mui/material';
-import { FaUserPlus } from 'react-icons/fa';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Box, Typography, Paper, IconButton, Tooltip, CircularProgress, Alert, TextField, Button, Stack, Switch, FormControlLabel, InputAdornment } from '@mui/material';
+import { DataGrid, gridPageCountSelector, gridPageSelector, useGridApiContext, useGridSelector } from '@mui/x-data-grid';
+import { FaUserPlus, FaFileExport, FaSearch } from 'react-icons/fa';
 import { phoneNumberService } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import '../styles/NumbersTable.css';
@@ -12,32 +11,85 @@ const AvailableNumbers = () => {
     const [numbers, setNumbers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize] = useState(100);
-    const [totalCount, setTotalCount] = useState(0);
+    const [paginationModel, setPaginationModel] = useState({
+        page: 0,
+        pageSize: 100,
+    });
+    const [rowCount, setRowCount] = useState(0);
+    
+    // Filter states
+    const [showGoldenOnly, setShowGoldenOnly] = useState(false);
+    const [numberRange, setNumberRange] = useState({ start: '', end: '' });
+    const [subscriberSearch, setSubscriberSearch] = useState('');
+    const [filterTimeout, setFilterTimeout] = useState(null);
 
+    // Memoize fetchNumbers to prevent unnecessary re-renders
+    const fetchNumbers = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await phoneNumberService.getAvailableNumbers(
+                paginationModel.page + 1,
+                paginationModel.pageSize,
+                {
+                    is_golden: showGoldenOnly || undefined,
+                    range_start: numberRange.start || undefined,
+                    range_end: numberRange.end || undefined,
+                    subscriber_search: subscriberSearch || undefined
+                }
+            );
+            setNumbers(response.numbers);
+            setRowCount(response.total_count || 0);
+            setError(null);
+        } catch (err) {
+            setError('Failed to load available numbers');
+            console.error('Error fetching available numbers:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [paginationModel.page, paginationModel.pageSize, showGoldenOnly, numberRange.start, numberRange.end, subscriberSearch]);
+
+    // Combined effect for all filter changes with debouncing
     useEffect(() => {
-        fetchNumbers();
-    }, [currentPage]);
+        if (filterTimeout) {
+            clearTimeout(filterTimeout);
+        }
+
+        const timeout = setTimeout(() => {
+            setPaginationModel(prev => ({ ...prev, page: 0 })); // Reset to first page
+            fetchNumbers();
+        }, 300);
+
+        setFilterTimeout(timeout);
+
+        return () => {
+            if (filterTimeout) {
+                clearTimeout(filterTimeout);
+            }
+        };
+    }, [showGoldenOnly, numberRange.start, numberRange.end, subscriberSearch, fetchNumbers]);
+
+    // Handle pagination changes separately
+    useEffect(() => {
+        if (!filterTimeout) { // Only fetch if not already fetching due to filter change
+            fetchNumbers();
+        }
+    }, [paginationModel.page, paginationModel.pageSize, fetchNumbers, filterTimeout]);
 
     const columns = [
         { 
             field: 'full_number', 
             headerName: 'Full Number', 
             width: 140,
-            filterable: true,
-            renderCell: (params) => (
-                <Tooltip title={params.value}>
-                    <div className="number-cell">{params.value}</div>
-                </Tooltip>
-            ),
+            flex: 1,
+            minWidth: 140,
         },
         { 
             field: 'is_golden', 
             headerName: 'Is Golden', 
             width: 100,
+            flex: 0.8,
+            minWidth: 100,
             type: 'boolean',
-            filterable: true,
             renderCell: (params) => (
                 <Tooltip title={params.value ? 'Golden Number' : 'Regular Number'}>
                     <div className={`golden-cell ${params.value ? 'golden' : 'regular'}`}>
@@ -50,7 +102,8 @@ const AvailableNumbers = () => {
             field: 'unassignment_date',
             headerName: 'Last Unassigned',
             width: 150,
-            filterable: true,
+            flex: 1,
+            minWidth: 150,
             renderCell: (params) => {
                 if (!params.value) {
                     return <div>Never Assigned</div>;
@@ -67,7 +120,8 @@ const AvailableNumbers = () => {
             field: 'previous_company',
             headerName: 'Previous Company',
             width: 160,
-            filterable: true,
+            flex: 1.2,
+            minWidth: 140,
             renderCell: (params) => (
                 <Tooltip title={params.value || 'Never Previously Assigned'}>
                     <div>{params.value || 'Never Previously Assigned'}</div>
@@ -78,7 +132,8 @@ const AvailableNumbers = () => {
             field: 'gateway', 
             headerName: 'Gateway', 
             width: 130,
-            filterable: true,
+            flex: 0.8,
+            minWidth: 100,
             renderCell: (params) => (
                 <Tooltip title={params.value || 'Not Set'}>
                     <div className="gateway-cell">{params.value || '-'}</div>
@@ -89,8 +144,9 @@ const AvailableNumbers = () => {
             field: 'actions',
             headerName: 'Assign',
             width: 80,
+            flex: 0.5,
+            minWidth: 80,
             sortable: false,
-            filterable: false,
             renderCell: (params) => (
                 <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                     <Tooltip title="Assign Number">
@@ -107,21 +163,70 @@ const AvailableNumbers = () => {
         },
     ];
 
-    const fetchNumbers = async () => {
+    const handleGoldenToggle = () => {
+        setShowGoldenOnly(prev => !prev);
+    };
+
+    const handleRangeChange = (field) => (event) => {
+        const value = event.target.value;
+        if (value.length <= 4 && /^\d*$/.test(value)) {
+            const newRange = {
+                ...numberRange,
+                [field]: value
+            };
+            
+            // Validate range (start should be less than or equal to end)
+            if (field === 'start' && newRange.end && parseInt(value) > parseInt(newRange.end)) {
+                return; // Don't update if start is greater than end
+            }
+            if (field === 'end' && newRange.start && parseInt(value) < parseInt(newRange.start)) {
+                return; // Don't update if end is less than start
+            }
+            
+            setNumberRange(newRange);
+        }
+    };
+
+    const handleSubscriberSearch = (event) => {
+        const value = event.target.value;
+        if (value.length <= 4 && /^\d*$/.test(value)) {
+            setSubscriberSearch(value);
+        }
+    };
+
+    const handleExport = async () => {
         try {
             setLoading(true);
             const response = await phoneNumberService.getAvailableNumbers(
-                currentPage,
-                pageSize
+                1,
+                rowCount,
+                {
+                    fetchAll: true,
+                    is_golden: showGoldenOnly || undefined,
+                    range_start: numberRange.start || undefined,
+                    range_end: numberRange.end || undefined,
+                    subscriber_search: subscriberSearch || undefined
+                }
             );
-            setNumbers(response.numbers);
-            if (response.total_count) {
-                setTotalCount(response.total_count);
-            }
-            setError(null);
-        } catch (err) {
-            setError('Failed to load available numbers');
-            console.error('Error fetching available numbers:', err);
+
+            const headers = ['Full Number', 'Is Golden', 'Last Unassigned', 'Previous Company', 'Gateway'];
+            const csvData = response.numbers.map(number => [
+                number.full_number,
+                number.is_golden ? 'Yes' : 'No',
+                number.unassignment_date ? new Date(number.unassignment_date).toLocaleDateString() : 'Never Assigned',
+                number.previous_company || 'Never Previously Assigned',
+                number.gateway || '-'
+            ]);
+
+            const csvContent = [headers, ...csvData].map(row => row.join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `available_numbers_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        } catch (error) {
+            setError('Failed to export numbers');
+            console.error('Error exporting numbers:', error);
         } finally {
             setLoading(false);
         }
@@ -152,25 +257,90 @@ const AvailableNumbers = () => {
                 Numbers that are unassigned and past their 90-day cool-off period
             </Typography>
             <Paper sx={{ p: 2 }}>
-                {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                        <CircularProgress />
-                    </Box>
-                ) : (
+                {/* Filter Toolbar */}
+                <Stack 
+                    direction={{ xs: 'column', sm: 'row' }} 
+                    spacing={2} 
+                    alignItems="center" 
+                    justifyContent="space-between"
+                    sx={{ mb: 2 }}
+                >
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+                        <FormControlLabel
+                            control={
+                                <Switch
+                                    checked={showGoldenOnly}
+                                    onChange={handleGoldenToggle}
+                                    color="primary"
+                                />
+                            }
+                            label="Golden Numbers Only"
+                        />
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <TextField
+                                label="Range Start"
+                                value={numberRange.start}
+                                onChange={handleRangeChange('start')}
+                                size="small"
+                                inputProps={{ maxLength: 4 }}
+                                sx={{ width: '100px' }}
+                                error={numberRange.end && parseInt(numberRange.start) > parseInt(numberRange.end)}
+                                helperText={numberRange.end && parseInt(numberRange.start) > parseInt(numberRange.end) ? 'Start should be ≤ End' : ''}
+                            />
+                            <Typography>to</Typography>
+                            <TextField
+                                label="Range End"
+                                value={numberRange.end}
+                                onChange={handleRangeChange('end')}
+                                size="small"
+                                inputProps={{ maxLength: 4 }}
+                                sx={{ width: '100px' }}
+                                error={numberRange.start && parseInt(numberRange.end) < parseInt(numberRange.start)}
+                                helperText={numberRange.start && parseInt(numberRange.end) < parseInt(numberRange.start) ? 'End should be ≥ Start' : ''}
+                            />
+                        </Stack>
+                        <TextField
+                            label="Search Last 4 Digits"
+                            value={subscriberSearch}
+                            onChange={handleSubscriberSearch}
+                            size="small"
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <FaSearch />
+                                    </InputAdornment>
+                                ),
+                            }}
+                            sx={{ width: '150px' }}
+                            helperText="Enter full or partial number"
+                        />
+                    </Stack>
+                    <Button
+                        variant="outlined"
+                        startIcon={<FaFileExport />}
+                        onClick={handleExport}
+                        disabled={loading}
+                    >
+                        Export
+                    </Button>
+                </Stack>
+
                     <div className="numbers-table-container">
                         <DataGrid
                             rows={numbers}
                             columns={columns}
                             loading={loading}
-                            disableRowSelectionOnClick
+                            rowCount={rowCount}
+                            pageSizeOptions={[100]}
+                            paginationModel={paginationModel}
+                            paginationMode="server"
+                            onPaginationModelChange={setPaginationModel}
+                            disableColumnFilter
+                            disableColumnSelector
+                            disableDensitySelector
                             getRowId={(row) => row.id}
-                            hideFooter={true}
-                            autoHeight={false}
-                            density="comfortable"
-                            disableColumnMenu={false}
-                            disableColumnFilter={false}
-                            disableColumnSelector={false}
-                            disableDensitySelector={false}
+                            keepNonExistentRowsSelected
+                            autoHeight
                             sx={{
                                 '& .MuiDataGrid-cell:focus': {
                                     outline: 'none',
@@ -180,29 +350,7 @@ const AvailableNumbers = () => {
                                 },
                             }}
                         />
-                        <div className="pagination-container">
-                            <div className="pagination-info">
-                                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} available numbers
-                            </div>
-                            <div className="pagination-buttons">
-                                <button 
-                                    className="pagination-button"
-                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                    disabled={currentPage === 1}
-                                >
-                                    Previous
-                                </button>
-                                <button 
-                                    className="pagination-button"
-                                    onClick={() => setCurrentPage(prev => prev + 1)}
-                                    disabled={currentPage * pageSize >= totalCount}
-                                >
-                                    Next
-                                </button>
-                            </div>
-                        </div>
                     </div>
-                )}
             </Paper>
         </Box>
     );

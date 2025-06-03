@@ -79,21 +79,36 @@ export const phoneNumberService = {
 
     getAvailableNumbers: async (page = 1, limit = 100, options = {}) => {
         try {
-            let url = `${API_URL}/phone-numbers/available?page=${page}&limit=${limit}`;
-            
-            if (options.fetchAll) {
-                url += '&fetchAll=true';
-            }
-            
-            if (options.items && options.items.length > 0) {
-                options.items.forEach(filter => {
-                    url += `&${filter.columnField}=${filter.value}`;
-                });
-            }
+            const params = {
+                page,
+                limit,
+                ...(options.fetchAll && { fetchAll: true }),
+                ...(options.is_golden && { is_golden: true }),
+                ...(options.range_start && { range_start: options.range_start }),
+                ...(options.range_end && { range_end: options.range_end }),
+                ...(options.subscriber_search && { subscriber_search: options.subscriber_search })
+            };
 
-            const response = await axios.get(url);
-            return response.data;
+            // Clean up undefined values
+            Object.keys(params).forEach(key => 
+                params[key] === undefined && delete params[key]
+            );
+
+            const response = await axios.get(`${API_URL}/phone-numbers/available`, { params });
+            
+            // Transform the response data
+            const transformedData = {
+                numbers: response.data.numbers.map(number => ({
+                    ...number,
+                    id: number.id || number.full_number // Ensure each row has a unique id
+                })),
+                total_count: response.data.total_count,
+                page: response.data.page
+            };
+
+            return transformedData;
         } catch (error) {
+            console.error('Error fetching available numbers:', error);
             throw error;
         }
     },

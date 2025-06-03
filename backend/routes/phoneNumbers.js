@@ -5,6 +5,9 @@ const phoneNumberController = require('../controllers/phoneNumberController');
 // Get all phone numbers
 router.get('/', phoneNumberController.getAllNumbers);
 
+// Get available numbers
+router.get('/available', phoneNumberController.getAvailableNumbers);
+
 // Get phone number by ID
 router.get('/:id', phoneNumberController.getNumberById);
 
