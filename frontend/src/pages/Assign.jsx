@@ -49,10 +49,10 @@ const Assign = () => {
     const [error, setError] = useState(null);
     const [showGoldenOnly, setShowGoldenOnly] = useState(false);
     const [formData, setFormData] = useState({
-        subscriberName: '',
-        companyName: '',
+        subscriber_name: '',
+        company_name: '',
         gateway: '',
-        gatewayUsername: ''
+        gateway_username: ''
     });
 
     // The only two valid gateways in the system
@@ -258,8 +258,8 @@ const Assign = () => {
 
                 <TextField
                     label="Subscriber Name"
-                    value={formData.subscriberName}
-                    onChange={handleInputChange('subscriberName')}
+                    value={formData.subscriber_name}
+                    onChange={handleInputChange('subscriber_name')}
                     variant="outlined"
                     required
                     fullWidth
@@ -267,8 +267,8 @@ const Assign = () => {
 
                 <TextField
                     label="Company Name"
-                    value={formData.companyName}
-                    onChange={handleInputChange('companyName')}
+                    value={formData.company_name}
+                    onChange={handleInputChange('company_name')}
                     variant="outlined"
                     required
                     fullWidth
@@ -291,8 +291,8 @@ const Assign = () => {
 
                 <TextField
                     label="Gateway Username"
-                    value={formData.gatewayUsername}
-                    onChange={handleInputChange('gatewayUsername')}
+                    value={formData.gateway_username}
+                    onChange={handleInputChange('gateway_username')}
                     variant="outlined"
                     required
                     fullWidth

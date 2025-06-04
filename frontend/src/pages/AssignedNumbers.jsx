@@ -22,12 +22,14 @@ import {
     FormControlLabel,
     Switch
 } from '@mui/material';
-import { FaEye, FaEdit, FaUserMinus } from 'react-icons/fa';
+import { FaEye, FaEdit, FaUserMinus, FaUserPlus } from 'react-icons/fa';
 import { phoneNumberService } from '../services/api';
 import NumberDetailsModal from '../components/NumberDetailsModal';
 import '../styles/assigned.css';
+import { useNavigate } from 'react-router-dom';
 
 function AssignedNumbers() {
+    const navigate = useNavigate();
     const [numbers, setNumbers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -259,6 +261,15 @@ function AssignedNumbers() {
                             <FaEdit />
                         </IconButton>
                     </Tooltip>
+                    <Tooltip title="Assign">
+                        <IconButton
+                            size="small"
+                            onClick={() => handleAssign(params.row)}
+                            sx={{ color: '#4caf50' }}
+                        >
+                            <FaUserPlus />
+                        </IconButton>
+                    </Tooltip>
                 </Box>
             ),
         },
@@ -391,16 +402,29 @@ function AssignedNumbers() {
         try {
             setLoading(true);
             await phoneNumberService.unassignNumber(selectedNumber.id, { notes: unassignNotes });
+            
+            // First clear the UI state
             setUnassignDialogOpen(false);
             setUnassignNotes('');
             setSelectedNumber(null);
-            fetchNumbers(); // Refresh the list
+            
+            // Then fetch fresh data
+            await fetchNumbers();
+            setError(null);
         } catch (err) {
             setError('Failed to unassign number');
             console.error('Error unassigning number:', err);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleAssign = (row) => {
+        navigate('/assign', { 
+            state: { 
+                selectedNumber: row 
+            }
+        });
     };
 
     return (
@@ -544,7 +568,8 @@ function AssignedNumbers() {
             <div className="data-grid-container" style={{ 
                 height: 'calc(100vh - 250px)',
                 width: '100%',
-                minWidth: '0'
+                minWidth: '0',
+                flex: 1
             }}>
                 <DataGrid
                     rows={numbers}
@@ -590,15 +615,6 @@ function AssignedNumbers() {
                         },
                         '& .MuiDataGrid-columnHeaders': {
                             backgroundColor: '#f5f5f5'
-                        },
-                        '& .MuiDataGrid-virtualScroller': {
-                            overflowX: 'hidden !important'
-                        },
-                        '& .MuiDataGrid-virtualScrollerContent': {
-                            minWidth: '100% !important'
-                        },
-                        '& .MuiDataGrid-virtualScrollerRenderZone': {
-                            minWidth: '100% !important'
                         }
                     }}
                     components={{

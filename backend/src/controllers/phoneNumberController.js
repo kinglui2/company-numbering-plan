@@ -215,16 +215,49 @@ const phoneNumberController = {
                 assignment_date: new Date()
             };
 
-            const success = await PhoneNumber.update(id, updateData);
-            if (!success) {
+            console.log('Attempting to assign number:', {
+                numberId: id,
+                updateData: JSON.stringify(updateData)
+            });
+
+            // First check if the number exists and is available
+            const number = await PhoneNumber.findById(id);
+            if (!number) {
+                console.log('Number not found:', id);
                 return res.status(404).json({ error: 'Phone number not found' });
             }
 
+            if (number.status === 'assigned') {
+                console.log('Number already assigned:', id);
+                return res.status(400).json({ error: 'Number is already assigned' });
+            }
+
+            const success = await PhoneNumber.update(id, updateData);
+            if (!success) {
+                console.log('Update operation failed for number:', id);
+                return res.status(500).json({ error: 'Failed to update number in database' });
+            }
+
             const updatedNumber = await PhoneNumber.findById(id);
+            console.log('Successfully assigned number:', {
+                numberId: id,
+                newStatus: updatedNumber.status
+            });
+            
             res.json(updatedNumber);
         } catch (error) {
-            console.error('Error assigning number:', error);
-            res.status(500).json({ error: 'Failed to assign number' });
+            console.error('Error assigning number:', {
+                numberId: req.params.id,
+                error: error.message,
+                stack: error.stack,
+                sqlMessage: error.sqlMessage,
+                sqlState: error.sqlState
+            });
+            res.status(500).json({ 
+                error: 'Failed to assign number',
+                details: error.message,
+                sqlError: error.sqlMessage
+            });
         }
     },
 
@@ -232,16 +265,32 @@ const phoneNumberController = {
     async unassignNumber(req, res) {
         try {
             const { id } = req.params;
+            console.log('Unassign request received for number:', { id, body: req.body });
+
             const success = await PhoneNumber.unassign(id, req.body);
             if (!success) {
+                console.log('Number not found for unassign:', id);
                 return res.status(404).json({ error: 'Phone number not found' });
             }
 
             const updatedNumber = await PhoneNumber.findById(id);
+            console.log('Successfully unassigned number:', { id, updatedNumber });
             res.json(updatedNumber);
         } catch (error) {
-            console.error('Error unassigning number:', error);
-            res.status(500).json({ error: 'Failed to unassign number' });
+            console.error('Detailed error in unassignNumber:', {
+                id: req.params.id,
+                message: error.message,
+                stack: error.stack,
+                code: error.code,
+                errno: error.errno,
+                sqlMessage: error.sqlMessage,
+                sqlState: error.sqlState
+            });
+            res.status(500).json({ 
+                error: 'Failed to unassign number',
+                details: error.message,
+                sqlError: error.sqlMessage
+            });
         }
     },
 

@@ -27,28 +27,39 @@ function CooloffNumbers() {
             field: 'cooloff_start_date',
             headerName: 'Cooloff Start',
             width: 150,
-            valueFormatter: (params) => {
-                if (!params.value) return '-';
-                return new Date(params.value).toLocaleDateString();
-            },
+            renderCell: (params) => {
+                if (!params.value) return <div>-</div>;
+                try {
+                    const date = new Date(params.value);
+                    const formatted = date.toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                    return (
+                        <Tooltip title={formatted}>
+                            <div>{formatted}</div>
+                        </Tooltip>
+                    );
+                } catch (err) {
+                    console.error('Error formatting date:', err);
+                    return <div>-</div>;
+                }
+            }
         },
         {
             field: 'days_remaining',
-            headerName: 'Days Remaining',
+            headerName: 'Cooloff Period',
             width: 150,
             valueGetter: (params) => {
-                if (!params.row.cooloff_start_date) return '-';
-                const startDate = new Date(params.row.cooloff_start_date);
-                const today = new Date();
-                const cooloffDays = 90; // Cooloff period in days
-                const daysElapsed = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
-                return Math.max(0, cooloffDays - daysElapsed);
+                if (!params.row) return 90;
+                return params.row.days_remaining;
             },
             renderCell: (params) => {
                 const days = params.value;
                 return (
-                    <Tooltip title={`${days} days until available`}>
-                        <div className={days <= 7 ? 'near-completion' : ''}>
+                    <Tooltip title={`${days} day cooloff period`}>
+                        <div>
                             {days} days
                         </div>
                     </Tooltip>
@@ -95,10 +106,17 @@ function CooloffNumbers() {
         try {
             setLoading(true);
             const response = await phoneNumberService.getCooloffNumbers(page + 1, pageSize);
-            setNumbers(response.numbers);
-            setTotalCount(response.total);
+            console.log('Raw response data:', response);
+            
+            if (response.numbers && response.numbers.length > 0) {
+                console.log('First number cooloff_start_date:', response.numbers[0].cooloff_start_date);
+            }
+            
+            setNumbers(response.numbers || []);
+            setTotalCount(response.pagination?.total || 0);
             setError(null);
         } catch (err) {
+            console.error('Error fetching cooloff numbers:', err);
             setError(err.message);
         } finally {
             setLoading(false);
@@ -129,6 +147,7 @@ function CooloffNumbers() {
                     rows={numbers}
                     columns={columns}
                     pagination
+                    paginationMode="server"
                     page={page}
                     pageSize={pageSize}
                     rowCount={totalCount}

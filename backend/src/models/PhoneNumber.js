@@ -52,18 +52,75 @@ class PhoneNumber {
     }
 
     static async update(id, updateData) {
-        const fields = Object.keys(updateData)
-            .map(key => `${key} = ?`)
-            .join(', ');
-        
-        const values = [...Object.values(updateData), id];
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
 
-        const [result] = await db.query(
-            `UPDATE phone_numbers SET ${fields} WHERE id = ?`,
-            values
-        );
+            // Get current number data for history
+            const [currentData] = await connection.query(
+                'SELECT * FROM phone_numbers WHERE id = ?',
+                [id]
+            );
 
-        return result.affectedRows > 0;
+            if (!currentData[0]) {
+                throw new Error('Phone number not found');
+            }
+
+            // Prepare update query
+            const fields = Object.keys(updateData)
+                .map(key => `${key} = ?`)
+                .join(', ');
+            
+            const values = [...Object.values(updateData), id];
+
+            // Update phone_numbers table
+            const [result] = await connection.query(
+                `UPDATE phone_numbers SET ${fields} WHERE id = ?`,
+                values
+            );
+
+            // Add to history if it's an assignment
+            if (updateData.status === 'assigned') {
+                await connection.query(
+                    `INSERT INTO number_history 
+                    (number_id, previous_status, new_status, 
+                     previous_subscriber, new_subscriber,
+                     previous_company, new_company,
+                     previous_gateway, new_gateway,
+                     previous_gateway_username, new_gateway_username,
+                     changed_by, change_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+                    [
+                        id,
+                        currentData[0].status,
+                        updateData.status,
+                        currentData[0].subscriber_name,
+                        updateData.subscriber_name,
+                        currentData[0].company_name,
+                        updateData.company_name,
+                        currentData[0].gateway,
+                        updateData.gateway,
+                        currentData[0].gateway_username,
+                        updateData.gateway_username,
+                        updateData.assigned_by || null
+                    ]
+                );
+            }
+
+            await connection.commit();
+            return result.affectedRows > 0;
+        } catch (error) {
+            await connection.rollback();
+            console.error('Error in update:', {
+                error: error.message,
+                stack: error.stack,
+                sqlMessage: error.sqlMessage,
+                data: { id, updateData }
+            });
+            throw error;
+        } finally {
+            connection.release();
+        }
     }
 
     static async updateStatus(id, status, unassignmentData = null) {
@@ -145,33 +202,41 @@ class PhoneNumber {
     static async unassign(id, data) {
         const connection = await db.getConnection();
         try {
+            console.log('Starting unassign transaction for number:', id);
             await connection.beginTransaction();
 
             // Get current number data
+            console.log('Fetching current number data');
             const [number] = await connection.query(
                 'SELECT * FROM phone_numbers WHERE id = ?',
                 [id]
             );
 
             if (!number[0]) {
+                console.log('Number not found:', id);
                 throw new Error('Phone number not found');
             }
 
+            console.log('Current number data:', number[0]);
+
             // Insert into cooloff_numbers
+            console.log('Inserting into cooloff_numbers');
             await connection.query(
                 `INSERT INTO cooloff_numbers 
-                (number_id, unassignment_date, previous_subscriber, previous_company, previous_gateway)
+                (number_id, unassigned_date, previous_subscriber, previous_company, previous_gateway)
                 VALUES (?, NOW(), ?, ?, ?)`,
                 [id, number[0].subscriber_name, number[0].company_name, number[0].gateway]
             );
 
             // Update phone_numbers status
+            console.log('Updating phone_numbers status');
             await connection.query(
                 `UPDATE phone_numbers 
                 SET status = 'cooloff',
                     subscriber_name = NULL,
                     company_name = NULL,
                     gateway = NULL,
+                    gateway_username = NULL,
                     assignment_date = NULL,
                     unassignment_date = NOW()
                 WHERE id = ?`,
@@ -179,16 +244,39 @@ class PhoneNumber {
             );
 
             // Add to history
+            console.log('Adding to number_history');
             await connection.query(
                 `INSERT INTO number_history 
-                (number_id, change_type, old_value, new_value)
-                VALUES (?, 'unassignment', ?, ?)`,
-                [id, JSON.stringify(number[0]), JSON.stringify({ status: 'cooloff' })]
+                (number_id, previous_status, new_status, 
+                previous_subscriber, previous_company, previous_gateway, previous_gateway_username,
+                new_subscriber, new_company, new_gateway, new_gateway_username,
+                changed_by)
+                VALUES (?, 'assigned', 'cooloff', 
+                ?, ?, ?, ?,
+                NULL, NULL, NULL, NULL,
+                ?)`,
+                [
+                    id, 
+                    number[0].subscriber_name, 
+                    number[0].company_name, 
+                    number[0].gateway,
+                    number[0].gateway_username,
+                    data.changed_by || null
+                ]
             );
 
+            console.log('Committing transaction');
             await connection.commit();
             return true;
         } catch (error) {
+            console.error('Error in unassign:', {
+                id,
+                message: error.message,
+                code: error.code,
+                errno: error.errno,
+                sqlMessage: error.sqlMessage,
+                sqlState: error.sqlState
+            });
             await connection.rollback();
             throw error;
         } finally {
@@ -244,29 +332,15 @@ class PhoneNumber {
                     p.status,
                     p.is_golden,
                     p.gateway,
-                    p.unassignment_date,
+                    p.unassignment_date as cooloff_start_date,
                     c.previous_company,
                     c.previous_subscriber,
                     c.previous_gateway,
-                    CASE 
-                        WHEN p.unassignment_date IS NULL THEN 'Never Assigned'
-                        ELSE CONCAT(
-                            DATEDIFF(
-                                DATE_ADD(p.unassignment_date, INTERVAL 90 DAY),
-                                NOW()
-                            ),
-                            ' days remaining'
-                        )
-                    END as assignment_status,
-                    DATEDIFF(
-                        DATE_ADD(p.unassignment_date, INTERVAL 90 DAY),
-                        NOW()
-                    ) as days_remaining
+                    90 as days_remaining
                 FROM phone_numbers p
                 LEFT JOIN cooloff_numbers c ON p.id = c.number_id
                 WHERE p.status = 'cooloff'
                 AND p.unassignment_date IS NOT NULL
-                AND DATE_ADD(p.unassignment_date, INTERVAL 90 DAY) >= NOW()
                 ORDER BY p.unassignment_date DESC
                 LIMIT ? OFFSET ?
             `;

@@ -41,31 +41,63 @@ export const phoneNumberService = {
                     full_number: String(number.full_number),
                     cooloff_start_date: number.unassignment_date || number.cooloff_start_date,
                     previous_company: number.previous_company || number.last_company,
-                    previous_subscriber: number.previous_subscriber || number.last_subscriber,
-                    days_remaining: calculateDaysRemaining(number.unassignment_date || number.cooloff_start_date)
+                    previous_subscriber: number.previous_subscriber || number.last_subscriber
                 }));
             }
-
-            return {
-                numbers: response.data.numbers || [],
-                total: response.data.total || 0,
-                page: response.data.page || 1,
-                totalPages: response.data.totalPages || 1
-            };
+  
+            return response.data;
         } catch (error) {
-            console.error('Error fetching cooloff numbers:', error);
-            throw new Error('Failed to fetch cooloff numbers. Please try again later.');
+            throw error;
         }
     },
 
     assignNumber: async (id, data) => {
-        const response = await axios.post(`${API_URL}/phone-numbers/${id}/assign`, data);
-        return response.data;
+        try {
+            console.log('Attempting to assign number:', { id, data });
+            const response = await axios.post(`${API_URL}/phone-numbers/${id}/assign`, data);
+            return response.data;
+        } catch (error) {
+            console.error('Error in assignNumber:', {
+                id,
+                data,
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                errorMessage: error.response?.data?.error,
+                errorDetails: error.response?.data?.details,
+                sqlError: error.response?.data?.sqlError
+            });
+            
+            // Throw a more informative error
+            throw new Error(
+                error.response?.data?.details || 
+                error.response?.data?.error || 
+                'Failed to assign number. Please try again.'
+            );
+        }
     },
 
     unassignNumber: async (id, data) => {
-        const response = await axios.post(`${API_URL}/phone-numbers/${id}/unassign`, data);
-        return response.data;
+        try {
+            console.log('Attempting to unassign number:', { id, data });
+            const response = await axios.post(`${API_URL}/phone-numbers/${id}/unassign`, data);
+            return response.data;
+        } catch (error) {
+            console.error('Error in unassignNumber:', {
+                id,
+                data,
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                errorMessage: error.response?.data?.error,
+                errorDetails: error.response?.data?.details,
+                sqlError: error.response?.data?.sqlError
+            });
+            
+            throw new Error(
+                error.response?.data?.details || 
+                error.response?.data?.error || 
+                'Failed to unassign number. Please try again.'
+            );
+        }
     },
 
     getDashboardStats: async () => {
