@@ -156,7 +156,10 @@ const Assign = () => {
                 message: `Successfully assigned number ${selectedNumber.full_number}`,
                 severity: 'success'
             });
-            navigate('/numbers/assigned');
+            // Add delay before navigation
+            setTimeout(() => {
+                navigate('/numbers/assigned');
+            }, 1500); // Show success message for 1.5 seconds before navigating
         } catch (error) {
             setError(error.message || 'Failed to assign number. Please try again.');
             setSnackbar({
@@ -192,12 +195,12 @@ const Assign = () => {
                             )}
                         </Typography>
                         <Grid container spacing={2}>
-                            <Grid item xs={12}>
+                            <Grid item>
                                 <Typography variant="body1">
                                     <strong>Status:</strong> {selectedNumber.status}
                                 </Typography>
                             </Grid>
-                            <Grid item xs={12}>
+                            <Grid item>
                                 <Typography variant="body1">
                                     <strong>Previous Assignment:</strong>{' '}
                                     {selectedNumber.unassignment_date ? (
@@ -208,14 +211,14 @@ const Assign = () => {
                                 </Typography>
                             </Grid>
                             {selectedNumber.previous_company && (
-                                <Grid item xs={12}>
+                                <Grid item>
                                     <Typography variant="body1">
                                         <strong>Previous Company:</strong> {selectedNumber.previous_company}
                                     </Typography>
                                 </Grid>
                             )}
                             {selectedNumber.previous_subscriber && (
-                                <Grid item xs={12}>
+                                <Grid item>
                                     <Typography variant="body1">
                                         <strong>Previous Subscriber:</strong> {selectedNumber.previous_subscriber}
                                     </Typography>
@@ -256,18 +259,21 @@ const Assign = () => {
                     loading={loading}
                     onChange={handleNumberSelect}
                     value={selectedNumber}
-                    renderOption={(props, option) => (
-                        <li {...props}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                                <span style={{ fontFamily: 'monospace' }}>{option.full_number}</span>
-                                {Boolean(option.is_golden) && (
-                                    <Tooltip title="Golden Number - Special pricing may apply">
-                                        <StarIcon sx={{ ml: 1, color: 'gold' }} />
-                                    </Tooltip>
-                                )}
-                            </Box>
-                        </li>
-                    )}
+                    renderOption={(props, option) => {
+                        const { key, ...otherProps } = props;
+                        return (
+                            <li key={key} {...otherProps}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                    <span style={{ fontFamily: 'monospace' }}>{option.full_number}</span>
+                                    {Boolean(option.is_golden) && (
+                                        <Tooltip title="Golden Number - Special pricing may apply">
+                                            <StarIcon sx={{ ml: 1, color: 'gold' }} />
+                                        </Tooltip>
+                                    )}
+                                </Box>
+                            </li>
+                        );
+                    }}
                     renderInput={(params) => (
                         <TextField
                             {...params}

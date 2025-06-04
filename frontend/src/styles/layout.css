@@ -1,6 +1,8 @@
 .app-layout {
     display: flex;
     min-height: 100vh;
+    width: 100%;
+    overflow-x: hidden;
 }
 
 .main-content {
@@ -9,17 +11,23 @@
     padding: 2rem;
     background-color: #f8fafc;
     transition: margin-left 0.3s ease;
+    width: calc(100% - 250px);
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 /* When sidebar is collapsed */
 .sidebar.collapsed + .main-content {
     margin-left: 60px;
+    width: calc(100% - 60px);
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
     .main-content {
         margin-left: 60px;
+        width: calc(100% - 60px);
+        padding: 1rem;
     }
 
     .sidebar {

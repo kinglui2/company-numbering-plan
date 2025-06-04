@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const phoneNumberController = require('../controllers/phoneNumberController');
+const { auth } = require('../middleware/auth');
+
+// Apply auth middleware to all routes
+router.use(auth);
 
 // Get all phone numbers with pagination
 router.get('/', phoneNumberController.getAllNumbers);

@@ -281,7 +281,8 @@ const Activity = () => {
         {
             field: 'action_type',
             headerName: 'Action',
-            width: 150,
+            flex: 1,
+            minWidth: 120,
             renderCell: (params) => {
                 const actionValue = typeof params === 'string' ? params : params.value;
                 return (
@@ -299,7 +300,8 @@ const Activity = () => {
         {
             field: 'target_type',
             headerName: 'Target Type',
-            width: 130,
+            flex: 1,
+            minWidth: 100,
             renderCell: (params) => (
                 <Chip
                     label={params.value}
@@ -312,7 +314,8 @@ const Activity = () => {
         { 
             field: 'target_id', 
             headerName: 'Target ID', 
-            width: 150,
+            flex: 1,
+            minWidth: 130,
             renderCell: (params) => (
                 <Typography variant="body2" className="cell-text">
                     {params.value}
@@ -322,7 +325,8 @@ const Activity = () => {
         { 
             field: 'user_name', 
             headerName: 'User', 
-            width: 150,
+            flex: 1,
+            minWidth: 120,
             renderCell: (params) => (
                 <Typography variant="body2" className="cell-text">
                     {params.value}
@@ -332,7 +336,8 @@ const Activity = () => {
         {
             field: 'created_at',
             headerName: 'Date',
-            width: 180,
+            flex: 1,
+            minWidth: 150,
             valueFormatter: (params) => {
                 try {
                     const dateString = typeof params === 'string' ? params : params.value;
@@ -550,6 +555,14 @@ const Activity = () => {
                     paginationMode="server"
                     className="data-grid"
                     error={error}
+                    disableColumnMenu
+                    autoHeight
+                    sx={{ 
+                        width: '100%',
+                        '& .MuiDataGrid-cell': {
+                            padding: '8px'
+                        }
+                    }}
                     components={{
                         NoRowsOverlay: () => (
                             <Stack height="100%" alignItems="center" justifyContent="center">

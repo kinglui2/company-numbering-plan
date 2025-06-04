@@ -1,5 +1,9 @@
 .activity-container {
     padding: 24px;
+    width: 100%;
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .activity-header {
@@ -7,6 +11,7 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 24px;
+    width: 100%;
 }
 
 .activity-title {
@@ -16,6 +21,8 @@
 .filter-card {
     margin-bottom: 24px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .filter-header {
@@ -35,10 +42,12 @@
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
+    width: 100%;
 }
 
 .filter-field {
     width: 100%;
+    min-width: 0;
 }
 
 .filter-field .MuiOutlinedInput-root {
@@ -57,44 +66,78 @@
 
 .data-grid-card {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .data-grid {
-    height: 600px;
+    width: 100% !important;
+    overflow: hidden !important;
 }
 
-.data-grid .MuiDataGrid-row:hover {
-    background-color: rgba(0, 0, 0, 0.04);
+.data-grid .MuiDataGrid-main {
+    width: 100%;
+    overflow: hidden !important;
+}
+
+.data-grid .MuiDataGrid-virtualScroller {
+    overflow-x: hidden !important;
 }
 
 .data-grid .MuiDataGrid-columnHeaders {
     background-color: #f5f5f5;
     border-bottom: 2px solid #e0e0e0;
+    min-height: 45px !important;
+}
+
+.data-grid .MuiDataGrid-columnHeader {
+    padding: 8px !important;
 }
 
 .data-grid .MuiDataGrid-cell {
     border-bottom: 1px solid #f0f0f0;
+    padding: 8px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.data-grid .MuiDataGrid-row {
+    min-height: 45px !important;
+    width: 100% !important;
 }
 
 .action-chip {
     font-weight: 500;
+    font-size: 0.875rem;
 }
 
 .action-chip .MuiChip-icon {
     margin-left: 4px;
+    font-size: 1rem;
 }
 
 .target-chip {
     background-color: #f5f5f5;
     font-weight: 500;
+    font-size: 0.875rem;
 }
 
 .cell-text {
     font-weight: 500;
+    font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .cell-date {
     color: rgba(0, 0, 0, 0.6);
+    font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .details-dialog .MuiDialogContent-root {
@@ -131,5 +174,9 @@
     
     .activity-container {
         padding: 16px;
+    }
+    
+    .activity-title {
+        font-size: 1.25rem;
     }
 } 
