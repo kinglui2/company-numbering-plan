@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const UserActivity = require('../models/UserActivity');
 const jwt = require('jsonwebtoken');
 
 const authController = {
@@ -40,6 +41,19 @@ const authController = {
             // Update last login
             await User.updateLastLogin(user.id);
 
+            // Log the login activity
+            await UserActivity.create({
+                user_id: user.id,
+                action_type: 'login',
+                target_type: 'user',
+                target_id: user.username,
+                new_value: {
+                    role: user.role,
+                    login_time: new Date().toISOString()
+                },
+                ip_address: req.ip
+            });
+
             // Return user info and token
             res.json({
                 token,
@@ -61,6 +75,18 @@ const authController = {
             const token = req.header('Authorization')?.replace('Bearer ', '');
             if (token) {
                 await User.invalidateSession(token);
+                
+                // Log the logout activity
+                await UserActivity.create({
+                    user_id: req.user.id,
+                    action_type: 'logout',
+                    target_type: 'user',
+                    target_id: req.user.username,
+                    new_value: {
+                        logout_time: new Date().toISOString()
+                    },
+                    ip_address: req.ip
+                });
             }
             res.json({ message: 'Logged out successfully' });
         } catch (error) {

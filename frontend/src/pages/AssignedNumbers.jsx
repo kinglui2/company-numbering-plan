@@ -20,8 +20,10 @@ import {
     MenuItem,
     Stack,
     FormControlLabel,
-    Switch
+    Switch,
+    Snackbar
 } from '@mui/material';
+import MuiAlert from '@mui/material/Alert';
 import { FaEye, FaEdit, FaUserMinus, FaUserPlus } from 'react-icons/fa';
 import { phoneNumberService } from '../services/api';
 import NumberDetailsModal from '../components/NumberDetailsModal';
@@ -62,6 +64,12 @@ function AssignedNumbers() {
 
     // Available gateways in the system
     const GATEWAYS = ['CS01', 'LS02'];
+
+    const [snackbar, setSnackbar] = useState({
+        open: false,
+        message: '',
+        severity: 'success'
+    });
 
     const assignedColumns = [
         {
@@ -399,9 +407,21 @@ function AssignedNumbers() {
     };
 
     const handleUnassign = async () => {
+        if (!unassignNotes.trim()) {
+            setError('Please provide unassignment notes');
+            return;
+        }
+
         try {
             setLoading(true);
+            setError(null);
             await phoneNumberService.unassignNumber(selectedNumber.id, { notes: unassignNotes });
+            
+            setSnackbar({
+                open: true,
+                message: `Successfully unassigned number ${selectedNumber.full_number}`,
+                severity: 'success'
+            });
             
             // First clear the UI state
             setUnassignDialogOpen(false);
@@ -410,13 +430,21 @@ function AssignedNumbers() {
             
             // Then fetch fresh data
             await fetchNumbers();
-            setError(null);
         } catch (err) {
-            setError('Failed to unassign number');
-            console.error('Error unassigning number:', err);
+            const errorMessage = err.message || 'Failed to unassign number. Please try again.';
+            setError(errorMessage);
+            setSnackbar({
+                open: true,
+                message: errorMessage,
+                severity: 'error'
+            });
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSnackbarClose = () => {
+        setSnackbar(prev => ({ ...prev, open: false }));
     };
 
     const handleAssign = (row) => {
@@ -652,6 +680,9 @@ function AssignedNumbers() {
                             value={unassignNotes}
                             onChange={(e) => setUnassignNotes(e.target.value)}
                             placeholder="Enter reason for unassigning this number..."
+                            required
+                            error={error && !unassignNotes.trim()}
+                            helperText={error && !unassignNotes.trim() ? 'Notes are required' : ''}
                         />
                     </Box>
                 </DialogContent>
@@ -661,6 +692,7 @@ function AssignedNumbers() {
                             setUnassignDialogOpen(false);
                             setUnassignNotes('');
                             setSelectedNumber(null);
+                            setError(null);
                         }}
                     >
                         Cancel
@@ -668,12 +700,28 @@ function AssignedNumbers() {
                     <Button 
                         onClick={handleUnassign}
                         color="error"
-                        disabled={loading}
+                        disabled={loading || !unassignNotes.trim()}
                     >
                         {loading ? <CircularProgress size={24} /> : 'Unassign'}
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <Snackbar 
+                open={snackbar.open} 
+                autoHideDuration={6000} 
+                onClose={handleSnackbarClose}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <MuiAlert 
+                    elevation={6} 
+                    variant="filled" 
+                    severity={snackbar.severity}
+                    onClose={handleSnackbarClose}
+                >
+                    {snackbar.message}
+                </MuiAlert>
+            </Snackbar>
 
             <NumberDetailsModal 
                 open={isDetailsModalOpen}

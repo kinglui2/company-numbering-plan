@@ -13,12 +13,14 @@ import {
     FormControl,
     InputLabel,
     Select,
-    MenuItem
+    MenuItem,
+    Snackbar
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import StarIcon from '@mui/icons-material/Star';
 import { phoneNumberService } from '../services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
+import MuiAlert from '@mui/material/Alert';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
     padding: theme.spacing(3),
@@ -48,6 +50,11 @@ const Assign = () => {
     const [selectedNumber, setSelectedNumber] = useState(null);
     const [error, setError] = useState(null);
     const [showGoldenOnly, setShowGoldenOnly] = useState(false);
+    const [snackbar, setSnackbar] = useState({
+        open: false,
+        message: '',
+        severity: 'success'
+    });
     const [formData, setFormData] = useState({
         subscriber_name: '',
         company_name: '',
@@ -119,19 +126,51 @@ const Assign = () => {
             return;
         }
         
+        // Validate required fields
+        if (!formData.subscriber_name.trim()) {
+            setError('Subscriber Name is required');
+            return;
+        }
+        if (!formData.company_name.trim()) {
+            setError('Company Name is required');
+            return;
+        }
+        if (!formData.gateway) {
+            setError('Gateway is required');
+            return;
+        }
+        if (!formData.gateway_username.trim()) {
+            setError('Gateway Username is required');
+            return;
+        }
+        
         try {
             setLoading(true);
+            setError(null);
             await phoneNumberService.assignNumber(selectedNumber.id, {
                 ...formData,
                 status: 'assigned'
             });
+            setSnackbar({
+                open: true,
+                message: `Successfully assigned number ${selectedNumber.full_number}`,
+                severity: 'success'
+            });
             navigate('/numbers/assigned');
         } catch (error) {
-            setError('Failed to assign number. Please try again.');
-            console.error('Error assigning number:', error);
+            setError(error.message || 'Failed to assign number. Please try again.');
+            setSnackbar({
+                open: true,
+                message: error.message || 'Failed to assign number. Please try again.',
+                severity: 'error'
+            });
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSnackbarClose = () => {
+        setSnackbar(prev => ({ ...prev, open: false }));
     };
 
     return (
@@ -314,6 +353,22 @@ const Assign = () => {
                     {loading ? <CircularProgress size={24} /> : 'Assign Number'}
                 </Button>
             </FormSection>
+
+            <Snackbar 
+                open={snackbar.open} 
+                autoHideDuration={6000} 
+                onClose={handleSnackbarClose}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <MuiAlert 
+                    elevation={6} 
+                    variant="filled" 
+                    severity={snackbar.severity}
+                    onClose={handleSnackbarClose}
+                >
+                    {snackbar.message}
+                </MuiAlert>
+            </Snackbar>
         </StyledPaper>
     );
 };

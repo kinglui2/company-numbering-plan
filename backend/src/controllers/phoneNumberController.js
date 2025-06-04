@@ -1,5 +1,6 @@
 const PhoneNumber = require('../models/PhoneNumber');
 const NumberHistory = require('../models/NumberHistory');
+const UserActivity = require('../models/UserActivity');
 const pool = require('../config/database');
 
 const phoneNumberController = {
@@ -239,6 +240,30 @@ const phoneNumberController = {
             }
 
             const updatedNumber = await PhoneNumber.findById(id);
+            
+            // Log the assign activity
+            await UserActivity.create({
+                user_id: req.user.id,
+                action_type: 'assign',
+                target_type: 'phone_number',
+                target_id: updatedNumber.full_number,
+                old_value: {
+                    status: number.status,
+                    company_name: number.company_name,
+                    subscriber_name: number.subscriber_name,
+                    gateway: number.gateway,
+                    gateway_username: number.gateway_username
+                },
+                new_value: {
+                    status: updatedNumber.status,
+                    company_name: updatedNumber.company_name,
+                    subscriber_name: updatedNumber.subscriber_name,
+                    gateway: updatedNumber.gateway,
+                    gateway_username: updatedNumber.gateway_username
+                },
+                ip_address: req.ip
+            });
+
             console.log('Successfully assigned number:', {
                 numberId: id,
                 newStatus: updatedNumber.status
@@ -267,13 +292,43 @@ const phoneNumberController = {
             const { id } = req.params;
             console.log('Unassign request received for number:', { id, body: req.body });
 
-            const success = await PhoneNumber.unassign(id, req.body);
-            if (!success) {
+            // Get the current number state before unassigning
+            const currentNumber = await PhoneNumber.findById(id);
+            if (!currentNumber) {
                 console.log('Number not found for unassign:', id);
                 return res.status(404).json({ error: 'Phone number not found' });
             }
 
+            const success = await PhoneNumber.unassign(id, req.body);
+            if (!success) {
+                console.log('Failed to unassign number:', id);
+                return res.status(500).json({ error: 'Failed to unassign number' });
+            }
+
             const updatedNumber = await PhoneNumber.findById(id);
+            
+            // Log the unassign activity
+            await UserActivity.create({
+                user_id: req.user.id,
+                action_type: 'unassign',
+                target_type: 'phone_number',
+                target_id: updatedNumber.full_number,
+                old_value: {
+                    status: currentNumber.status,
+                    company_name: currentNumber.company_name,
+                    subscriber_name: currentNumber.subscriber_name,
+                    gateway: currentNumber.gateway,
+                    gateway_username: currentNumber.gateway_username
+                },
+                new_value: {
+                    status: updatedNumber.status,
+                    unassignment_date: updatedNumber.unassignment_date,
+                    previous_company: currentNumber.company_name,
+                    previous_subscriber: currentNumber.subscriber_name
+                },
+                ip_address: req.ip
+            });
+
             console.log('Successfully unassigned number:', { id, updatedNumber });
             res.json(updatedNumber);
         } catch (error) {
