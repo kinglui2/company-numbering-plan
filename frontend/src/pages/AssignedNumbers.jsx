@@ -590,9 +590,6 @@ function AssignedNumbers() {
                 </Alert>
             )}
 
-            {console.log('Sample number:', JSON.stringify(numbers[0], null, 2))}
-            {console.log('Column definitions:', JSON.stringify(viewMode === 'assigned' ? assignedColumns : unassignedColumns, null, 2))}
-
             <div className="data-grid-container" style={{ 
                 height: 'calc(100vh - 250px)',
                 width: '100%',

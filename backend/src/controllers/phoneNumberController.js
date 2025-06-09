@@ -4,6 +4,106 @@ const UserActivity = require('../models/UserActivity');
 const pool = require('../config/database');
 
 const phoneNumberController = {
+    // Update a phone number
+    async updateNumber(req, res) {
+        try {
+            const { id } = req.params;
+            const updateData = req.body;
+            
+            if (!req.user) {
+                return res.status(401).json({ 
+                    error: 'Authentication required',
+                    message: 'Please log in to update phone numbers'
+                });
+            }
+            
+            // Validate if number exists
+            let existingNumber;
+            try {
+                [existingNumber] = await pool.query('SELECT * FROM phone_numbers WHERE id = ?', [id]);
+            } catch (dbError) {
+                return res.status(500).json({ 
+                    error: 'Database error',
+                    message: 'Unable to verify phone number. Please try again.'
+                });
+            }
+
+            if (!existingNumber || existingNumber.length === 0) {
+                return res.status(404).json({ 
+                    error: 'Not found',
+                    message: 'The phone number you are trying to update does not exist.'
+                });
+            }
+
+            // Build update query dynamically based on provided fields
+            const allowedFields = ['subscriber_name', 'company_name', 'gateway', 'gateway_username'];
+            const updates = [];
+            const values = [];
+
+            Object.keys(updateData).forEach(key => {
+                if (allowedFields.includes(key)) {
+                    updates.push(`${key} = ?`);
+                    values.push(updateData[key]);
+                }
+            });
+
+            if (updates.length === 0) {
+                return res.status(400).json({ 
+                    error: 'Invalid update',
+                    message: 'No valid fields provided for update.'
+                });
+            }
+
+            // Add ID to values array
+            values.push(id);
+
+            // Execute update query
+            const updateQuery = `
+                UPDATE phone_numbers 
+                SET ${updates.join(', ')} 
+                WHERE id = ?
+            `;
+            
+            try {
+                await pool.query(updateQuery, values);
+            } catch (dbError) {
+                return res.status(500).json({ 
+                    error: 'Update failed',
+                    message: 'Failed to update phone number. Please try again.'
+                });
+            }
+
+            // Log the activity
+            try {
+                await UserActivity.create({
+                    user_id: req.user.id,
+                    activity_type: 'update',
+                    number_id: id,
+                    details: JSON.stringify({
+                        previous: existingNumber[0],
+                        updated: updateData
+                    })
+                });
+            } catch (activityError) {
+                // Don't fail the update if activity logging fails
+            }
+
+            res.json({ 
+                success: true,
+                message: 'Phone number updated successfully',
+                data: {
+                    id,
+                    ...updateData
+                }
+            });
+        } catch (error) {
+            res.status(500).json({ 
+                error: 'System error',
+                message: 'An unexpected error occurred. Please try again.'
+            });
+        }
+    },
+
     // Get all numbers with pagination
     async getAllNumbers(req, res) {
         try {

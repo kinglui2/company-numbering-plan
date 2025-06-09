@@ -22,19 +22,17 @@ const NumberDetailsModal = ({ open, onClose, numberDetails }) => {
             fullWidth
         >
             <DialogTitle>
-                <Typography variant="h6">
-                    Number Details: {numberDetails.full_number}
-                </Typography>
+                Number Details: {numberDetails.full_number}
             </DialogTitle>
             <DialogContent dividers>
-                <Grid container spacing={3}>
+                <Box display="grid" gap={3}>
                     {/* Basic Information */}
-                    <Grid item xs={12}>
+                    <Box>
                         <Typography variant="subtitle1" color="primary" gutterBottom>
                             Basic Information
                         </Typography>
-                        <Grid container spacing={2}>
-                            <Grid item xs={6}>
+                        <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2}>
+                            <Box>
                                 <Typography variant="body2" color="textSecondary">
                                     Status
                                 </Typography>
@@ -48,49 +46,49 @@ const NumberDetailsModal = ({ open, onClose, numberDetails }) => {
                                     size="small"
                                     sx={{ mt: 1 }}
                                 />
-                            </Grid>
-                            <Grid item xs={6}>
+                            </Box>
+                            <Box>
                                 <Typography variant="body2" color="textSecondary">
                                     Golden Number
                                 </Typography>
                                 <Typography variant="body1">
                                     {numberDetails.is_golden ? 'Yes' : 'No'}
                                 </Typography>
-                            </Grid>
-                        </Grid>
-                    </Grid>
+                            </Box>
+                        </Box>
+                    </Box>
 
                     {/* Assignment Information */}
-                    <Grid item xs={12}>
+                    <Box>
                         <Typography variant="subtitle1" color="primary" gutterBottom>
                             Assignment Information
                         </Typography>
-                        <Grid container spacing={2}>
-                            <Grid item xs={6}>
+                        <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2}>
+                            <Box>
                                 <Typography variant="body2" color="textSecondary">
                                     Subscriber Name
                                 </Typography>
                                 <Typography variant="body1">
                                     {numberDetails.subscriber_name || '-'}
                                 </Typography>
-                            </Grid>
-                            <Grid item xs={6}>
+                            </Box>
+                            <Box>
                                 <Typography variant="body2" color="textSecondary">
                                     Company Name
                                 </Typography>
                                 <Typography variant="body1">
                                     {numberDetails.company_name || '-'}
                                 </Typography>
-                            </Grid>
-                            <Grid item xs={6}>
+                            </Box>
+                            <Box>
                                 <Typography variant="body2" color="textSecondary">
                                     Gateway
                                 </Typography>
                                 <Typography variant="body1">
                                     {numberDetails.gateway || '-'}
                                 </Typography>
-                            </Grid>
-                            <Grid item xs={6}>
+                            </Box>
+                            <Box>
                                 <Typography variant="body2" color="textSecondary">
                                     Assignment Date
                                 </Typography>
@@ -99,34 +97,34 @@ const NumberDetailsModal = ({ open, onClose, numberDetails }) => {
                                         new Date(numberDetails.assignment_date).toLocaleDateString() : 
                                         '-'}
                                 </Typography>
-                            </Grid>
-                        </Grid>
-                    </Grid>
+                            </Box>
+                        </Box>
+                    </Box>
 
                     {/* Previous Assignment (if in cooloff) */}
                     {numberDetails.status === 'COOLOFF' && (
-                        <Grid item xs={12}>
+                        <Box>
                             <Typography variant="subtitle1" color="primary" gutterBottom>
                                 Previous Assignment
                             </Typography>
-                            <Grid container spacing={2}>
-                                <Grid item xs={6}>
+                            <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2}>
+                                <Box>
                                     <Typography variant="body2" color="textSecondary">
                                         Previous Subscriber
                                     </Typography>
                                     <Typography variant="body1">
                                         {numberDetails.previous_subscriber || '-'}
                                     </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
+                                </Box>
+                                <Box>
                                     <Typography variant="body2" color="textSecondary">
                                         Previous Company
                                     </Typography>
                                     <Typography variant="body1">
                                         {numberDetails.previous_company || '-'}
                                     </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
+                                </Box>
+                                <Box>
                                     <Typography variant="body2" color="textSecondary">
                                         Unassignment Date
                                     </Typography>
@@ -135,19 +133,19 @@ const NumberDetailsModal = ({ open, onClose, numberDetails }) => {
                                             new Date(numberDetails.unassignment_date).toLocaleDateString() : 
                                             '-'}
                                     </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
+                                </Box>
+                                <Box>
                                     <Typography variant="body2" color="textSecondary">
                                         Days Remaining in Cooloff
                                     </Typography>
                                     <Typography variant="body1">
                                         {numberDetails.days_remaining || '-'}
                                     </Typography>
-                                </Grid>
-                            </Grid>
-                        </Grid>
+                                </Box>
+                            </Box>
+                        </Box>
                     )}
-                </Grid>
+                </Box>
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose} color="primary">

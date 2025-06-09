@@ -18,7 +18,8 @@ import {
     InputLabel,
     Select,
     MenuItem,
-    Stack
+    Stack,
+    Snackbar
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { FaEdit } from 'react-icons/fa';
@@ -48,6 +49,13 @@ const MissingData = () => {
         gateway_username: ''
     });
     const [selectedMissingType, setSelectedMissingType] = useState('all');
+    const [editError, setEditError] = useState(null);
+    const [editLoading, setEditLoading] = useState(false);
+    const [snackbar, setSnackbar] = useState({
+        open: false,
+        message: '',
+        severity: 'success'
+    });
 
     // Available gateways in the system
     const GATEWAYS = ['CS01', 'LS02'];
@@ -86,21 +94,34 @@ const MissingData = () => {
             gateway: number.gateway || '',
             gateway_username: number.gateway_username || ''
         });
+        setEditError(null);
         setEditDialogOpen(true);
     };
 
     const handleSave = async () => {
         try {
-            setLoading(true);
+            setEditLoading(true);
+            setEditError(null);
             await phoneNumberService.updateNumber(selectedNumber.id, editFormData);
             setEditDialogOpen(false);
             await fetchNumbers();
-            setError(null);
+            // Show success message using snackbar
+            setSnackbar({
+                open: true,
+                message: 'Number updated successfully',
+                severity: 'success'
+            });
         } catch (err) {
-            setError('Failed to update number. Please try again.');
+            setEditError(err.response?.data?.message || 'Failed to update number. Please try again.');
         } finally {
-            setLoading(false);
+            setEditLoading(false);
         }
+    };
+
+    const handleCloseEdit = () => {
+        setEditDialogOpen(false);
+        setEditError(null);
+        setEditFormData({});
     };
 
     const getMissingDataChip = (value, label) => {
@@ -312,42 +333,62 @@ const MissingData = () => {
             {/* Edit Dialog */}
             <Dialog 
                 open={editDialogOpen} 
-                onClose={() => setEditDialogOpen(false)}
+                onClose={handleCloseEdit}
                 maxWidth="sm"
                 fullWidth
             >
-                <DialogTitle>Edit Number Details</DialogTitle>
+                <DialogTitle>
+                    Edit Number Details
+                </DialogTitle>
                 <DialogContent>
-                    <Stack spacing={2} sx={{ pt: 2 }}>
+                    {editError && (
+                        <Alert 
+                            severity="error" 
+                            sx={{ mb: 2, mt: 1 }}
+                            action={
+                                <Button 
+                                    color="inherit" 
+                                    size="small"
+                                    onClick={() => setEditError(null)}
+                                >
+                                    Dismiss
+                                </Button>
+                            }
+                        >
+                            {editError}
+                        </Alert>
+                    )}
+                    <Stack spacing={2} sx={{ mt: 1 }}>
                         <TextField
                             fullWidth
-                            size="small"
                             label="Subscriber Name"
-                            value={editFormData.subscriber_name}
+                            value={editFormData.subscriber_name || ''}
                             onChange={(e) => setEditFormData(prev => ({
                                 ...prev,
                                 subscriber_name: e.target.value
                             }))}
+                            disabled={editLoading}
                         />
                         <TextField
                             fullWidth
-                            size="small"
                             label="Company Name"
-                            value={editFormData.company_name}
+                            value={editFormData.company_name || ''}
                             onChange={(e) => setEditFormData(prev => ({
                                 ...prev,
                                 company_name: e.target.value
                             }))}
+                            disabled={editLoading}
                         />
-                        <FormControl fullWidth size="small">
+                        <FormControl fullWidth>
                             <InputLabel>Gateway</InputLabel>
                             <Select
-                                value={editFormData.gateway}
+                                value={editFormData.gateway || ''}
                                 label="Gateway"
                                 onChange={(e) => setEditFormData(prev => ({
                                     ...prev,
                                     gateway: e.target.value
                                 }))}
+                                disabled={editLoading}
                             >
                                 {GATEWAYS.map(gw => (
                                     <MenuItem key={gw} value={gw}>{gw}</MenuItem>
@@ -356,23 +397,50 @@ const MissingData = () => {
                         </FormControl>
                         <TextField
                             fullWidth
-                            size="small"
                             label="Gateway Username"
-                            value={editFormData.gateway_username}
+                            value={editFormData.gateway_username || ''}
                             onChange={(e) => setEditFormData(prev => ({
                                 ...prev,
                                 gateway_username: e.target.value
                             }))}
+                            disabled={editLoading}
                         />
                     </Stack>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSave} variant="contained" color="primary">
-                        Save Changes
+                    <Button 
+                        onClick={handleCloseEdit}
+                        disabled={editLoading}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleSave}
+                        disabled={editLoading}
+                        variant="contained"
+                        color="primary"
+                        startIcon={editLoading ? <CircularProgress size={20} /> : null}
+                    >
+                        {editLoading ? 'Saving...' : 'Save Changes'}
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Success/Error Snackbar */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert 
+                    onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+                    severity={snackbar.severity}
+                    sx={{ width: '100%' }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };

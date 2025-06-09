@@ -213,10 +213,23 @@ export const phoneNumberService = {
 
     updateNumber: async (id, data) => {
         try {
+            console.log('Frontend: Attempting to update number:', { id, data });
+            console.log('Frontend: API URL:', `${API_URL}/phone-numbers/${id}`);
             const response = await axios.put(`${API_URL}/phone-numbers/${id}`, data);
+            console.log('Frontend: Update response:', response.data);
             return response.data;
         } catch (error) {
-            throw new Error(`Failed to update number. ${error.response?.data?.error || error.message}`);
+            console.error('Frontend: Update error:', {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                config: {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    data: error.config?.data
+                }
+            });
+            throw error;
         }
     }
 };

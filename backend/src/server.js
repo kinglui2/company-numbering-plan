@@ -16,6 +16,18 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Debug middleware
+app.use((req, res, next) => {
+    console.log('Server: Incoming request:', {
+        method: req.method,
+        path: req.path,
+        body: req.body,
+        params: req.params,
+        query: req.query
+    });
+    next();
+});
+
 // Test database connection
 pool.getConnection()
     .then(connection => {
@@ -34,9 +46,23 @@ app.use('/api/activity', activityRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/settings', settingsRoutes);
 
+// 404 handler
+app.use((req, res, next) => {
+    console.log('Server: 404 - Route not found:', {
+        method: req.method,
+        path: req.path
+    });
+    res.status(404).json({ message: 'Route not found' });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
+    console.error('Server: Error:', {
+        error: err.message,
+        stack: err.stack,
+        path: req.path,
+        method: req.method
+    });
     res.status(500).json({ message: 'Something went wrong!' });
 });
 

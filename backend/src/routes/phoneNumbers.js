@@ -27,6 +27,9 @@ router.get('/missing', phoneNumberController.getMissingDataNumbers);
 // Get phone number by ID (this should come after more specific routes)
 router.get('/:id', phoneNumberController.getNumberById);
 
+// Update phone number
+router.put('/:id', phoneNumberController.updateNumber);
+
 // Assign a number
 router.post('/:id/assign', phoneNumberController.assignNumber);
 
