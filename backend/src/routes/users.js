@@ -16,6 +16,7 @@ const validateUser = [
 router.get('/', auth, authorize(['manager']), userController.getUsers);
 router.post('/', auth, authorize(['manager']), validateUser, userController.createUser);
 router.put('/:id', auth, authorize(['manager']), validateUser, userController.updateUser);
+router.delete('/:id', auth, authorize(['manager']), userController.deleteUser);
 router.put('/:id/status', auth, authorize(['manager']), userController.toggleUserStatus);
 
 module.exports = router; 

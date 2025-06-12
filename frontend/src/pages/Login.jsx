@@ -39,12 +39,6 @@ function Login() {
                 <h2>Welcome Back</h2>
                 <p className="login-subtitle">Sign in to continue to Numbering Plan Management</p>
                 
-                {error && (
-                    <div className="alert alert-error">
-                        {error}
-                    </div>
-                )}
-                
                 <form onSubmit={handleSubmit} className="login-form">
                     <div className="form-group">
                         <input
@@ -70,6 +64,11 @@ function Login() {
                             className="login-input"
                         />
                     </div>
+                    {error && (
+                        <div className="alert alert-error">
+                            {error}
+                        </div>
+                    )}
                     <button
                         type="submit"
                         className="btn btn-primary login-button"

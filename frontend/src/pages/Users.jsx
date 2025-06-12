@@ -16,9 +16,18 @@ import {
     Chip,
     Alert,
     Tooltip,
+    InputAdornment,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { Add as AddIcon, Edit as EditIcon, Block as BlockIcon, CheckCircle as CheckCircleIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import {
+    Add as AddIcon,
+    Edit as EditIcon,
+    Block as BlockIcon,
+    CheckCircle as CheckCircleIcon,
+    Delete as DeleteIcon,
+    Visibility as VisibilityIcon,
+    VisibilityOff as VisibilityOffIcon,
+} from '@mui/icons-material';
 import axios from 'axios';
 import '../styles/Users.css';
 
@@ -42,6 +51,9 @@ const Users = () => {
     const [rowCount, setRowCount] = useState(0);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState(null);
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
         fetchUsers();
@@ -167,11 +179,14 @@ const Users = () => {
 
     const handleDeleteClick = (user) => {
         setUserToDelete(user);
+        setDeleteError(null);
         setDeleteDialogOpen(true);
     };
 
     const handleDeleteConfirm = async () => {
         try {
+            setIsDeleting(true);
+            setDeleteError(null);
             const token = localStorage.getItem('token');
             await axios.delete(`${API_URL}/users/${userToDelete.id}`, {
                 headers: {
@@ -180,15 +195,27 @@ const Users = () => {
             });
             setDeleteDialogOpen(false);
             setUserToDelete(null);
-            fetchUsers();
+            await fetchUsers();
         } catch (err) {
-            setError('Failed to delete user');
+            console.error('Error deleting user:', err);
+            setDeleteError(err.response?.data?.message || 'Failed to delete user');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
     const handleDeleteCancel = () => {
         setDeleteDialogOpen(false);
         setUserToDelete(null);
+        setDeleteError(null);
+    };
+
+    const handleClickShowPassword = () => {
+        setShowPassword(!showPassword);
+    };
+
+    const handleMouseDownPassword = (event) => {
+        event.preventDefault();
     };
 
     const columns = [
@@ -331,12 +358,13 @@ const Users = () => {
                     }}
                     paginationModel={{
                         page: page,
-                        pageSize
+                        pageSize: pageSize
                     }}
                     onPaginationModelChange={(model) => {
                         setPage(model.page);
                         setPageSize(model.pageSize);
                     }}
+                    pageSizeOptions={[5, 10, 25, 50]}
                 />
             </Box>
 
@@ -375,12 +403,26 @@ const Users = () => {
                                 fullWidth
                                 label="Password"
                                 name="password"
-                                type="password"
+                                type={showPassword ? 'text' : 'password'}
                                 value={formData.password}
                                 onChange={handleInputChange}
                                 required={!editingUser}
                                 helperText={editingUser ? 'Leave blank to keep current password' : ''}
                                 margin="normal"
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton
+                                                aria-label="toggle password visibility"
+                                                onClick={handleClickShowPassword}
+                                                onMouseDown={handleMouseDownPassword}
+                                                edge="end"
+                                            >
+                                                {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ),
+                                }}
                             />
                             <FormControl fullWidth margin="normal">
                                 <InputLabel>Role</InputLabel>
@@ -411,14 +453,26 @@ const Users = () => {
             >
                 <DialogTitle>Confirm Delete</DialogTitle>
                 <DialogContent>
+                    {deleteError && (
+                        <Alert severity="error" sx={{ mb: 2 }}>
+                            {deleteError}
+                        </Alert>
+                    )}
                     <Typography>
                         Are you sure you want to delete user "{userToDelete?.username}"? This action cannot be undone.
                     </Typography>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleDeleteCancel}>Cancel</Button>
-                    <Button onClick={handleDeleteConfirm} color="error" variant="contained">
-                        Delete
+                    <Button onClick={handleDeleteCancel} disabled={isDeleting}>
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={handleDeleteConfirm} 
+                        color="error" 
+                        variant="contained"
+                        disabled={isDeleting}
+                    >
+                        {isDeleting ? 'Deleting...' : 'Delete'}
                     </Button>
                 </DialogActions>
             </Dialog>
