@@ -31,8 +31,6 @@ import {
 import axios from 'axios';
 import '../styles/Users.css';
 
-const API_URL = 'http://localhost:5000/api';
-
 const Users = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -64,7 +62,7 @@ const Users = () => {
             setLoading(true);
             const token = localStorage.getItem('token');
             
-            const response = await axios.get(`${API_URL}/users`, {
+            const response = await axios.get('/api/users', {
                 headers: {
                     Authorization: `Bearer ${token}`
                 },
@@ -142,13 +140,13 @@ const Users = () => {
             setFormError('');
             const token = localStorage.getItem('token');
             if (editingUser) {
-                await axios.put(`${API_URL}/users/${editingUser.id}`, formData, {
+                await axios.put(`/api/users/${editingUser.id}`, formData, {
                     headers: {
                         Authorization: `Bearer ${token}`
                     }
                 });
             } else {
-                await axios.post(`${API_URL}/users`, formData, {
+                await axios.post('/api/users', formData, {
                     headers: {
                         Authorization: `Bearer ${token}`
                     }
@@ -164,7 +162,7 @@ const Users = () => {
     const handleToggleStatus = async (userId, currentStatus) => {
         try {
             const token = localStorage.getItem('token');
-            await axios.put(`${API_URL}/users/${userId}/status`, {
+            await axios.put(`/api/users/${userId}/status`, {
                 is_active: !currentStatus,
             }, {
                 headers: {
@@ -188,7 +186,7 @@ const Users = () => {
             setIsDeleting(true);
             setDeleteError(null);
             const token = localStorage.getItem('token');
-            await axios.delete(`${API_URL}/users/${userToDelete.id}`, {
+            await axios.delete(`/api/users/${userToDelete.id}`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

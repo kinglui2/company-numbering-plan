@@ -1,7 +1,5 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
-
 export const phoneNumberService = {
     getAllNumbers: async (page = 1, limit = 100, filters = {}) => {
         try {
@@ -12,7 +10,7 @@ export const phoneNumberService = {
                 ...filters
             };
 
-            const response = await axios.get(`${API_URL}/phone-numbers`, { params });
+            const response = await axios.get('/api/phone-numbers', { params });
             return response.data;
         } catch (error) {
             throw error;
@@ -20,13 +18,13 @@ export const phoneNumberService = {
     },
 
     getNumberById: async (id) => {
-        const response = await axios.get(`${API_URL}/phone-numbers/${id}`);
+        const response = await axios.get('/api/phone-numbers/' + id);
         return response.data;
     },
 
     getCooloffNumbers: async (page = 1, limit = 10) => {
         try {
-            const response = await axios.get(`${API_URL}/phone-numbers/cooloff`, {
+            const response = await axios.get('/api/phone-numbers/cooloff', {
                 params: {
                     page,
                     limit,
@@ -54,7 +52,7 @@ export const phoneNumberService = {
     assignNumber: async (id, data) => {
         try {
             console.log('Attempting to assign number:', { id, data });
-            const response = await axios.post(`${API_URL}/phone-numbers/${id}/assign`, data);
+            const response = await axios.post('/api/phone-numbers/' + id + '/assign', data);
             return response.data;
         } catch (error) {
             console.error('Error in assignNumber:', {
@@ -79,7 +77,7 @@ export const phoneNumberService = {
     unassignNumber: async (id, data) => {
         try {
             console.log('Attempting to unassign number:', { id, data });
-            const response = await axios.post(`${API_URL}/phone-numbers/${id}/unassign`, data);
+            const response = await axios.post('/api/phone-numbers/' + id + '/unassign', data);
             return response.data;
         } catch (error) {
             console.error('Error in unassignNumber:', {
@@ -102,7 +100,7 @@ export const phoneNumberService = {
 
     getDashboardStats: async () => {
         try {
-            const response = await axios.get(`${API_URL}/phone-numbers/stats`);
+            const response = await axios.get('/api/phone-numbers/stats');
             return response.data;
         } catch (error) {
             throw error;
@@ -126,7 +124,7 @@ export const phoneNumberService = {
                 params[key] === undefined && delete params[key]
             );
 
-            const response = await axios.get(`${API_URL}/phone-numbers/available`, { params });
+            const response = await axios.get('/api/phone-numbers/available', { params });
             
             // Transform the response data
             const transformedData = {
@@ -155,7 +153,7 @@ export const phoneNumberService = {
                 return acc;
             }, {});
 
-            const response = await axios.get(`${API_URL}/phone-numbers/status/${status}`, {
+            const response = await axios.get('/api/phone-numbers/status/' + status, {
                 params: {
                     page,
                     limit,
@@ -184,7 +182,7 @@ export const phoneNumberService = {
 
     getMissingDataNumbers: async (page = 1, limit = 100, missingType = 'all') => {
         try {
-            const response = await axios.get(`${API_URL}/phone-numbers/missing`, {
+            const response = await axios.get('/api/phone-numbers/missing', {
                 params: {
                     page,
                     limit,
@@ -214,8 +212,8 @@ export const phoneNumberService = {
     updateNumber: async (id, data) => {
         try {
             console.log('Frontend: Attempting to update number:', { id, data });
-            console.log('Frontend: API URL:', `${API_URL}/phone-numbers/${id}`);
-            const response = await axios.put(`${API_URL}/phone-numbers/${id}`, data);
+            console.log('Frontend: API URL:', '/api/phone-numbers/' + id);
+            const response = await axios.put('/api/phone-numbers/' + id, data);
             console.log('Frontend: Update response:', response.data);
             return response.data;
         } catch (error) {

@@ -10,17 +10,10 @@ async function createInitialUsers() {
             ['manager', 'manager@example.com', managerPassword, 'manager']
         );
 
-        // Create support user
-        const supportPassword = await bcrypt.hash('support123', 10);
-        await db.query(
-            'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
-            ['support', 'support@example.com', supportPassword, 'support']
-        );
-
-        console.log('Initial users created successfully');
+        console.log('Manager user created successfully');
         process.exit(0);
     } catch (error) {
-        console.error('Error creating initial users:', error);
+        console.error('Error creating manager user:', error);
         process.exit(1);
     }
 }

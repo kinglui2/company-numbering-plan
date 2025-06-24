@@ -1,10 +1,8 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
 const authService = {
     async login(username, password) {
-        const response = await axios.post(`${API_URL}/auth/login`, {
+        const response = await axios.post('/api/auth/login', {
             username,
             password
         });
@@ -47,7 +45,7 @@ const authService = {
 
         try {
             this.setAuthHeader(token);
-            const response = await axios.get(`${API_URL}/auth/me`);
+            const response = await axios.get('/api/auth/me');
             return response.data;
         } catch (error) {
             this.logout();

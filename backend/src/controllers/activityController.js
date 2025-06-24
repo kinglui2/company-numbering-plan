@@ -31,8 +31,6 @@ const activityController = {
                 offset: offset
             });
 
-            console.log('Activities being sent from backend:', activities);
-
             // Get total count for pagination
             const total = await UserActivity.countAll({
                 actionType,
@@ -56,7 +54,6 @@ const activityController = {
             });
 
         } catch (error) {
-            console.error('Error in getActivities:', error);
             res.status(500).json({ message: 'Internal server error' });
         }
     },
@@ -73,7 +70,6 @@ const activityController = {
 
             res.json(activity);
         } catch (error) {
-            console.error('Error in getActivityById:', error);
             res.status(500).json({ message: 'Internal server error' });
         }
     }

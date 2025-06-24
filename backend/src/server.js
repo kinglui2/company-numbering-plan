@@ -12,7 +12,12 @@ require('./cron/updateCooloff');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: '*',  // Allow all origins during development
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -67,7 +72,14 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0';  // Listen on all interfaces
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+    console.log(`Server is running on http://${HOST}:${PORT}`);
+    console.log('Server is listening on all network interfaces');
+});
+
+// Add a test endpoint
+app.get('/api/test', (req, res) => {
+    res.json({ message: 'Server is running and accessible' });
 });

@@ -65,7 +65,6 @@ const authController = {
                 }
             });
         } catch (error) {
-            console.error('Login error:', error);
             res.status(500).json({ message: 'Login failed' });
         }
     },
@@ -90,7 +89,6 @@ const authController = {
             }
             res.json({ message: 'Logged out successfully' });
         } catch (error) {
-            console.error('Logout error:', error);
             res.status(500).json({ message: 'Logout failed' });
         }
     },
@@ -109,7 +107,6 @@ const authController = {
                 role: user.role
             });
         } catch (error) {
-            console.error('Get current user error:', error);
             res.status(500).json({ message: 'Failed to get user information' });
         }
     }

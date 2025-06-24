@@ -26,9 +26,6 @@ const userController = {
                 [parseInt(pageSize), offset]
             );
 
-            console.log('Raw database results:', JSON.stringify(users, null, 2));
-            console.log('Sample user data:', users[0]);
-
             const formattedUsers = users.map(user => ({
                 ...user,
                 last_login: user.formatted_last_login
@@ -43,10 +40,8 @@ const userController = {
                 pageCount: Math.ceil(total[0].count / pageSize)
             };
 
-            console.log('Final response:', JSON.stringify(response, null, 2));
             res.json(response);
         } catch (error) {
-            console.error('Error in getUsers:', error);
             res.status(500).json({ message: 'Internal server error' });
         }
     },
@@ -89,7 +84,6 @@ const userController = {
                 });
             } catch (activityError) {
                 // Log the error but don't fail the request
-                console.error('Error logging user creation activity:', activityError);
             }
 
             res.status(201).json({
@@ -97,7 +91,6 @@ const userController = {
                 userId: result.insertId
             });
         } catch (error) {
-            console.error('Error in createUser:', error);
             res.status(500).json({ message: 'Internal server error' });
         }
     },
@@ -167,7 +160,6 @@ const userController = {
 
             res.json({ message: 'User updated successfully' });
         } catch (error) {
-            console.error('Error in updateUser:', error);
             res.status(500).json({ message: 'Internal server error' });
         }
     },
@@ -208,7 +200,6 @@ const userController = {
 
             res.json({ message: 'User status updated successfully' });
         } catch (error) {
-            console.error('Error in toggleUserStatus:', error);
             res.status(500).json({ message: 'Internal server error' });
         }
     },
@@ -278,7 +269,6 @@ const userController = {
                         ip_address: req.ip
                     });
                 } catch (activityError) {
-                    console.error('Error logging user deletion activity:', activityError);
                     // Don't fail the request if activity logging fails
                 }
 
@@ -292,7 +282,6 @@ const userController = {
                 throw error;
             }
         } catch (error) {
-            console.error('Error in deleteUser:', error);
             res.status(500).json({ 
                 message: 'Failed to delete user',
                 error: process.env.NODE_ENV === 'development' ? error.message : undefined

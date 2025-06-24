@@ -8,6 +8,7 @@ function Login() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
     const { login } = useAuth();
 
@@ -17,13 +18,20 @@ function Login() {
         setLoading(true);
 
         try {
+            console.log('Attempting login with username:', username);
             const user = await login(username, password);
+            console.log('Login successful, user:', user);
             if (user.role === 'manager') {
                 navigate('/manager');
             } else {
                 navigate('/support');
             }
         } catch (err) {
+            console.error('Login error details:', {
+                message: err.message,
+                response: err.response?.data,
+                status: err.response?.status
+            });
             setError(err.response?.data?.message || 'Failed to login');
         } finally {
             setLoading(false);
@@ -52,17 +60,39 @@ function Login() {
                             className="login-input"
                         />
                     </div>
-                    <div className="form-group">
+                    <div className="form-group" style={{ position: 'relative' }}>
                         <input
                             id="password"
                             name="password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="Password"
                             className="login-input"
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            style={{
+                                position: 'absolute',
+                                right: '10px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: 0
+                            }}
+                            tabIndex={-1}
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                            {showPassword ? (
+                                <span role="img" aria-label="Hide password">🙈</span>
+                            ) : (
+                                <span role="img" aria-label="Show password">👁️</span>
+                            )}
+                        </button>
                     </div>
                     {error && (
                         <div className="alert alert-error">

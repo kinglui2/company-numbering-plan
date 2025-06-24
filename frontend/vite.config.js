@@ -7,7 +7,10 @@ export default defineConfig({
   root: path.resolve(__dirname, 'src'),
   server: {
     port: 5173,
-    open: true
+    open: true,
+    proxy: {
+      '/api': 'http://localhost:5000'
+    }
   },
   build: {
     outDir: path.resolve(__dirname, 'dist')

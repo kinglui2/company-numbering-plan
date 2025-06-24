@@ -90,10 +90,7 @@ class UserActivity {
             }
         }
 
-        console.log('Executing query:', query);
-        console.log('With params:', params);
         const [rows] = await db.query(query, params);
-        console.log('Query results:', rows);
         return rows;
     }
 

@@ -170,18 +170,10 @@ const phoneNumberController = {
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 100;
             
-            console.log('Fetching cooloff numbers with params:', { page, limit });
-            
             const result = await PhoneNumber.getCooloffNumbers(page, limit);
-            console.log('Cooloff numbers result:', { 
-                total: result.pagination.total,
-                page: result.pagination.page,
-                count: result.numbers.length 
-            });
             
             res.json(result);
         } catch (error) {
-            console.error('Error in getCooloffNumbers:', error);
             res.status(500).json({ 
                 error: 'Failed to fetch cooloff numbers',
                 details: error.message
@@ -209,8 +201,6 @@ const phoneNumberController = {
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 100;
             const fetchAll = req.query.fetchAll === 'true';
-
-            console.log('Available Numbers Query Params:', req.query);
 
             // Build WHERE conditions
             const whereConditions = [
@@ -247,9 +237,6 @@ const phoneNumberController = {
                 WHERE ${whereConditions.join(' AND ')}
             `;
 
-            console.log('Count Query:', countQuery);
-            console.log('Count Params:', params);
-
             const [countResult] = await pool.query(countQuery, params);
             const total = countResult[0].total;
 
@@ -279,13 +266,8 @@ const phoneNumberController = {
                 ${!fetchAll ? 'LIMIT ? OFFSET ?' : ''}
             `;
 
-            console.log('Numbers Query:', numbersQuery);
-            console.log('Numbers Params:', fetchAll ? params : [...params, limit, (page - 1) * limit]);
-
             const queryParams = fetchAll ? params : [...params, limit, (page - 1) * limit];
             const [numbers] = await pool.query(numbersQuery, queryParams);
-
-            console.log(`Found ${numbers.length} numbers out of ${total} total`);
 
             res.json({
                 numbers,
@@ -298,7 +280,6 @@ const phoneNumberController = {
                 }
             });
         } catch (error) {
-            console.error('Error fetching available numbers:', error);
             res.status(500).json({ 
                 error: 'Failed to fetch available numbers',
                 details: error.message
@@ -316,26 +297,18 @@ const phoneNumberController = {
                 assignment_date: new Date()
             };
 
-            console.log('Attempting to assign number:', {
-                numberId: id,
-                updateData: JSON.stringify(updateData)
-            });
-
             // First check if the number exists and is available
             const number = await PhoneNumber.findById(id);
             if (!number) {
-                console.log('Number not found:', id);
                 return res.status(404).json({ error: 'Phone number not found' });
             }
 
             if (number.status === 'assigned') {
-                console.log('Number already assigned:', id);
                 return res.status(400).json({ error: 'Number is already assigned' });
             }
 
             const success = await PhoneNumber.update(id, updateData);
             if (!success) {
-                console.log('Update operation failed for number:', id);
                 return res.status(500).json({ error: 'Failed to update number in database' });
             }
 
@@ -363,21 +336,9 @@ const phoneNumberController = {
                 },
                 ip_address: req.ip
             });
-
-            console.log('Successfully assigned number:', {
-                numberId: id,
-                newStatus: updatedNumber.status
-            });
             
             res.json(updatedNumber);
         } catch (error) {
-            console.error('Error assigning number:', {
-                numberId: req.params.id,
-                error: error.message,
-                stack: error.stack,
-                sqlMessage: error.sqlMessage,
-                sqlState: error.sqlState
-            });
             res.status(500).json({ 
                 error: 'Failed to assign number',
                 details: error.message,
@@ -390,18 +351,15 @@ const phoneNumberController = {
     async unassignNumber(req, res) {
         try {
             const { id } = req.params;
-            console.log('Unassign request received for number:', { id, body: req.body });
 
             // Get the current number state before unassigning
             const currentNumber = await PhoneNumber.findById(id);
             if (!currentNumber) {
-                console.log('Number not found for unassign:', id);
                 return res.status(404).json({ error: 'Phone number not found' });
             }
 
             const success = await PhoneNumber.unassign(id, req.body);
             if (!success) {
-                console.log('Failed to unassign number:', id);
                 return res.status(500).json({ error: 'Failed to unassign number' });
             }
 
@@ -429,18 +387,8 @@ const phoneNumberController = {
                 ip_address: req.ip
             });
 
-            console.log('Successfully unassigned number:', { id, updatedNumber });
             res.json(updatedNumber);
         } catch (error) {
-            console.error('Detailed error in unassignNumber:', {
-                id: req.params.id,
-                message: error.message,
-                stack: error.stack,
-                code: error.code,
-                errno: error.errno,
-                sqlMessage: error.sqlMessage,
-                sqlState: error.sqlState
-            });
             res.status(500).json({ 
                 error: 'Failed to unassign number',
                 details: error.message,
@@ -463,7 +411,7 @@ const phoneNumberController = {
 
             res.json(stats[0]);
         } catch (error) {
-            console.error('Error fetching dashboard stats:', error);
+//             console.error('Error fetching dashboard stats:', error);
             res.status(500).json({ error: 'Failed to fetch dashboard stats' });
         }
     },
@@ -475,8 +423,6 @@ const phoneNumberController = {
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 10;
             const offset = (page - 1) * limit;
-
-            console.log('Fetching numbers by status:', { status, page, limit, offset, filters: req.query });
 
             // Validate status
             if (!['assigned', 'unassigned'].includes(status)) {
@@ -525,9 +471,6 @@ const phoneNumberController = {
                 WHERE ${whereConditions.join(' AND ')}
             `;
 
-            console.log('Count Query:', countQuery);
-            console.log('Count Params:', params);
-
             const [countResult] = await pool.query(countQuery, params);
             const total = countResult[0].total;
 
@@ -559,8 +502,6 @@ const phoneNumberController = {
             `;
 
             const dataParams = [...params, limit, offset];
-            console.log('Data Query:', dataQuery);
-            console.log('Data Params:', dataParams);
 
             const [numbers] = await pool.query(dataQuery, dataParams);
 
@@ -571,7 +512,6 @@ const phoneNumberController = {
                 totalPages: Math.ceil(total / limit)
             });
         } catch (error) {
-            console.error('Error in getNumbersByStatus:', error);
             res.status(500).json({ 
                 error: 'Failed to fetch numbers by status',
                 details: error.message 
@@ -586,8 +526,6 @@ const phoneNumberController = {
             const limit = parseInt(req.query.limit) || 100;
             const type = req.query.type || 'all';
             const offset = (page - 1) * limit;
-
-            console.log('Fetching missing data numbers:', { page, limit, type, offset });
 
             // Base condition for assigned numbers
             const baseCondition = "status = 'assigned'";
@@ -654,14 +592,6 @@ const phoneNumberController = {
             const [numbers] = await pool.query(numbersQuery, [limit, offset]);
             const stats = statsResult[0];
 
-            console.log('Query results:', {
-                totalRecords: stats.totalMissing,
-                returnedRecords: numbers.length,
-                page,
-                limit,
-                offset
-            });
-
             res.json({
                 numbers,
                 total: stats.totalMissing,
@@ -671,7 +601,6 @@ const phoneNumberController = {
                 stats
             });
         } catch (error) {
-            console.error('Error fetching numbers with missing data:', error);
             res.status(500).json({ 
                 error: 'Failed to fetch numbers with missing data',
                 details: error.message

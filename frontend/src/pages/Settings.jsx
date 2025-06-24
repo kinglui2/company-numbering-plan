@@ -24,8 +24,6 @@ import { Info as InfoIcon } from '@mui/icons-material';
 import axios from 'axios';
 import '../styles/Settings.css';
 
-const API_URL = 'http://localhost:5000/api';
-
 function Settings() {
     const [activeTab, setActiveTab] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -56,10 +54,10 @@ function Settings() {
             setLoading(true);
             const token = localStorage.getItem('token');
             const [systemResponse, securityResponse] = await Promise.all([
-                axios.get(`${API_URL}/settings/system`, {
+                axios.get('/api/settings/system', {
                     headers: { Authorization: `Bearer ${token}` }
                 }),
-                axios.get(`${API_URL}/settings/security`, {
+                axios.get('/api/settings/security', {
                     headers: { Authorization: `Bearer ${token}` }
                 })
             ]);
@@ -118,11 +116,11 @@ function Settings() {
             const token = localStorage.getItem('token');
             
             if (activeTab === 0) {
-                await axios.put(`${API_URL}/settings/system`, systemConfig, {
+                await axios.put('/api/settings/system', systemConfig, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             } else {
-                await axios.put(`${API_URL}/settings/security`, securityConfig, {
+                await axios.put('/api/settings/security', securityConfig, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             }

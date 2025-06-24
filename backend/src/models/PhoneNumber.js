@@ -111,12 +111,6 @@ class PhoneNumber {
             return result.affectedRows > 0;
         } catch (error) {
             await connection.rollback();
-            console.error('Error in update:', {
-                error: error.message,
-                stack: error.stack,
-                sqlMessage: error.sqlMessage,
-                data: { id, updateData }
-            });
             throw error;
         } finally {
             connection.release();
@@ -193,7 +187,6 @@ class PhoneNumber {
                 }
             };
         } catch (error) {
-            console.error('Error in getAll:', error);
             throw error;
         }
     }
@@ -202,25 +195,19 @@ class PhoneNumber {
     static async unassign(id, data) {
         const connection = await db.getConnection();
         try {
-            console.log('Starting unassign transaction for number:', id);
             await connection.beginTransaction();
 
             // Get current number data
-            console.log('Fetching current number data');
             const [number] = await connection.query(
                 'SELECT * FROM phone_numbers WHERE id = ?',
                 [id]
             );
 
             if (!number[0]) {
-                console.log('Number not found:', id);
                 throw new Error('Phone number not found');
             }
 
-            console.log('Current number data:', number[0]);
-
             // Insert into cooloff_numbers
-            console.log('Inserting into cooloff_numbers');
             await connection.query(
                 `INSERT INTO cooloff_numbers 
                 (number_id, unassigned_date, previous_subscriber, previous_company, previous_gateway)
@@ -229,7 +216,6 @@ class PhoneNumber {
             );
 
             // Update phone_numbers status
-            console.log('Updating phone_numbers status');
             await connection.query(
                 `UPDATE phone_numbers 
                 SET status = 'cooloff',
@@ -244,7 +230,6 @@ class PhoneNumber {
             );
 
             // Add to history
-            console.log('Adding to number_history');
             await connection.query(
                 `INSERT INTO number_history 
                 (number_id, previous_status, new_status, 
@@ -265,18 +250,9 @@ class PhoneNumber {
                 ]
             );
 
-            console.log('Committing transaction');
             await connection.commit();
             return true;
         } catch (error) {
-            console.error('Error in unassign:', {
-                id,
-                message: error.message,
-                code: error.code,
-                errno: error.errno,
-                sqlMessage: error.sqlMessage,
-                sqlState: error.sqlState
-            });
             await connection.rollback();
             throw error;
         } finally {
@@ -288,7 +264,6 @@ class PhoneNumber {
     static async getCooloffNumbers(page = 1, limit = 100) {
         try {
             const offset = (page - 1) * limit;
-            console.log('Starting getCooloffNumbers with params:', { page, limit, offset });
 
             // Get total count
             const countQuery = `
@@ -298,16 +273,13 @@ class PhoneNumber {
                 AND p.unassignment_date IS NOT NULL
                 AND DATE_ADD(p.unassignment_date, INTERVAL 90 DAY) >= NOW()
             `;
-            console.log('Executing count query:', countQuery);
             
             const [countResult] = await db.query(countQuery);
-            console.log('Count result:', countResult);
             
             const total = countResult[0].total;
 
             // If no results, return empty array with pagination
             if (total === 0) {
-                console.log('No cooloff numbers found, returning empty result');
                 return {
                     numbers: [],
                     pagination: {
@@ -344,10 +316,8 @@ class PhoneNumber {
                 ORDER BY p.unassignment_date DESC
                 LIMIT ? OFFSET ?
             `;
-            console.log('Executing numbers query with params:', [limit, offset]);
             
             const [rows] = await db.query(numbersQuery, [limit, offset]);
-            console.log('Query returned rows:', rows.length);
 
             return {
                 numbers: rows,
@@ -359,14 +329,6 @@ class PhoneNumber {
                 }
             };
         } catch (error) {
-            console.error('Detailed error in getCooloffNumbers:', {
-                message: error.message,
-                stack: error.stack,
-                code: error.code,
-                errno: error.errno,
-                sqlMessage: error.sqlMessage,
-                sqlState: error.sqlState
-            });
             throw error;
         }
     }
