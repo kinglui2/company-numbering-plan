@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, IconButton, Tooltip, CircularProgress, Alert, TextField, Button, Stack, Switch, FormControlLabel, InputAdornment } from '@mui/material';
+import { Box, Typography, Paper, IconButton, Tooltip, CircularProgress, Alert, TextField, Button, Stack, Switch, FormControlLabel, InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Chip } from '@mui/material';
 import { DataGrid, gridPageCountSelector, gridPageSelector, useGridApiContext, useGridSelector } from '@mui/x-data-grid';
-import { FaUserPlus, FaFileExport, FaSearch } from 'react-icons/fa';
+import { FaUserPlus, FaFileExport, FaSearch, FaGlobe, FaGlobeAmericas } from 'react-icons/fa';
 import { phoneNumberService } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import '../styles/NumbersTable.css';
@@ -22,6 +22,16 @@ const AvailableNumbers = () => {
     const [numberRange, setNumberRange] = useState({ start: '', end: '' });
     const [subscriberSearch, setSubscriberSearch] = useState('');
     const [quickSearchTimeout, setQuickSearchTimeout] = useState(null);
+
+    // Publish states
+    const [bulkPublishOpen, setBulkPublishOpen] = useState(false);
+    const [bulkPublishCount, setBulkPublishCount] = useState(10);
+    const [bulkPublishSource, setBulkPublishSource] = useState('random');
+    const [publishing, setPublishing] = useState(false);
+
+    // Confirmation dialog state
+    const [confirmDialog, setConfirmDialog] = useState({ open: false, type: '', number: null });
+    const [confirmBulk, setConfirmBulk] = useState(false);
 
     useEffect(() => {
         fetchNumbers();
@@ -69,6 +79,25 @@ const AvailableNumbers = () => {
             ),
         },
         {
+            field: 'is_published',
+            headerName: 'Published',
+            width: 100,
+            flex: 0.8,
+            minWidth: 100,
+            type: 'boolean',
+            renderCell: (params) => (
+                <Tooltip title={params.value ? 'Published on Website' : 'Not Published'}>
+                    <Chip
+                        icon={params.value ? <FaGlobe /> : <FaGlobeAmericas />}
+                        label={params.value ? 'Published' : 'Not Published'}
+                        color={params.value ? 'success' : 'default'}
+                        size="small"
+                        variant={params.value ? 'filled' : 'outlined'}
+                    />
+                </Tooltip>
+            ),
+        },
+        {
             field: 'unassignment_date',
             headerName: 'Last Unassigned',
             width: 150,
@@ -112,13 +141,13 @@ const AvailableNumbers = () => {
         },
         {
             field: 'actions',
-            headerName: 'Assign',
-            width: 80,
-            flex: 0.5,
-            minWidth: 80,
+            headerName: 'Actions',
+            width: 120,
+            flex: 0.8,
+            minWidth: 120,
             sortable: false,
             renderCell: (params) => (
-                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
                     <Tooltip title="Assign Number">
                         <IconButton
                             size="small"
@@ -128,6 +157,27 @@ const AvailableNumbers = () => {
                             <FaUserPlus />
                         </IconButton>
                     </Tooltip>
+                    {params.row.is_published ? (
+                        <Tooltip title="Unpublish Number">
+                            <IconButton
+                                size="small"
+                                onClick={() => handleUnpublish(params.row)}
+                                sx={{ color: '#f57c00' }}
+                            >
+                                <FaGlobe />
+                            </IconButton>
+                        </Tooltip>
+                    ) : (
+                        <Tooltip title="Publish Number">
+                            <IconButton
+                                size="small"
+                                onClick={() => handlePublish(params.row)}
+                                sx={{ color: '#388e3c' }}
+                            >
+                                <FaGlobeAmericas />
+                            </IconButton>
+                        </Tooltip>
+                    )}
                 </Box>
             ),
         },
@@ -227,6 +277,55 @@ const AvailableNumbers = () => {
         });
     };
 
+    const handlePublish = (row) => {
+        setConfirmDialog({ open: true, type: 'publish', number: row });
+    };
+
+    const handleUnpublish = (row) => {
+        setConfirmDialog({ open: true, type: 'unpublish', number: row });
+    };
+
+    const confirmPublishUnpublish = async () => {
+        if (!confirmDialog.number) return;
+        try {
+            setLoading(true);
+            if (confirmDialog.type === 'publish') {
+                await phoneNumberService.publishNumber(confirmDialog.number.id);
+            } else if (confirmDialog.type === 'unpublish') {
+                await phoneNumberService.unpublishNumber(confirmDialog.number.id);
+            }
+            await fetchNumbers();
+            setConfirmDialog({ open: false, type: '', number: null });
+        } catch (error) {
+            setError(error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleBulkPublish = async () => {
+        setConfirmBulk(true);
+    };
+
+    const confirmBulkPublish = async () => {
+        try {
+            setPublishing(true);
+            const data = {
+                count: bulkPublishCount,
+                source: bulkPublishSource,
+                numberIds: bulkPublishSource === 'current_page' ? numbers.map(n => n.id) : undefined
+            };
+            await phoneNumberService.bulkPublishNumbers(data);
+            setBulkPublishOpen(false);
+            setConfirmBulk(false);
+            await fetchNumbers();
+        } catch (error) {
+            setError(error.message);
+        } finally {
+            setPublishing(false);
+        }
+    };
+
     if (error) {
         return (
             <Alert severity="error" sx={{ mt: 2 }}>
@@ -297,14 +396,25 @@ const AvailableNumbers = () => {
                             sx={{ width: '150px' }}
                         />
                     </Stack>
-                    <Button
-                        variant="outlined"
-                        startIcon={<FaFileExport />}
-                        onClick={handleExport}
-                        disabled={loading}
-                    >
-                        Export
-                    </Button>
+                    <Stack direction="row" spacing={2}>
+                        <Button
+                            variant="contained"
+                            startIcon={<FaGlobe />}
+                            onClick={() => setBulkPublishOpen(true)}
+                            disabled={loading}
+                            color="success"
+                        >
+                            Bulk Publish
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            startIcon={<FaFileExport />}
+                            onClick={handleExport}
+                            disabled={loading}
+                        >
+                            Export
+                        </Button>
+                    </Stack>
                 </Stack>
 
                     <div className="numbers-table-container">
@@ -332,6 +442,97 @@ const AvailableNumbers = () => {
                         />
                     </div>
             </Paper>
+
+            {/* Bulk Publish Modal */}
+            <Dialog open={bulkPublishOpen} onClose={() => setBulkPublishOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Bulk Publish Numbers</DialogTitle>
+                <DialogContent>
+                    <Stack spacing={3} sx={{ mt: 1 }}>
+                        <FormControl fullWidth>
+                            <InputLabel>Count</InputLabel>
+                            <Select
+                                value={bulkPublishCount}
+                                onChange={(e) => setBulkPublishCount(e.target.value)}
+                                label="Count"
+                            >
+                                <MenuItem value={10}>10</MenuItem>
+                                <MenuItem value={20}>20</MenuItem>
+                                <MenuItem value={50}>50</MenuItem>
+                                <MenuItem value={100}>100</MenuItem>
+                            </Select>
+                        </FormControl>
+                        
+                        <FormControl fullWidth>
+                            <InputLabel>Source</InputLabel>
+                            <Select
+                                value={bulkPublishSource}
+                                onChange={(e) => setBulkPublishSource(e.target.value)}
+                                label="Source"
+                            >
+                                <MenuItem value="random">Random from entire list</MenuItem>
+                                <MenuItem value="current_page">From current page</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        <Alert severity="info">
+                            {bulkPublishSource === 'random' 
+                                ? `This will publish ${bulkPublishCount} random unpublished available numbers.`
+                                : `This will publish ${bulkPublishCount} numbers from the current page (if available).`
+                            }
+                        </Alert>
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setBulkPublishOpen(false)} disabled={publishing}>
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={handleBulkPublish} 
+                        variant="contained" 
+                        color="success"
+                        disabled={publishing}
+                        startIcon={publishing ? <CircularProgress size={16} /> : <FaGlobe />}
+                    >
+                        {publishing ? 'Publishing...' : 'Publish'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Confirmation Dialog for Individual Publish/Unpublish */}
+            <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false, type: '', number: null })}>
+                <DialogTitle>{confirmDialog.type === 'publish' ? 'Confirm Publish' : 'Confirm Unpublish'}</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to {confirmDialog.type} the number <b>{confirmDialog.number?.full_number}</b>?
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setConfirmDialog({ open: false, type: '', number: null })}>
+                        Cancel
+                    </Button>
+                    <Button onClick={confirmPublishUnpublish} color={confirmDialog.type === 'publish' ? 'success' : 'warning'} variant="contained">
+                        Confirm
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Confirmation Dialog for Bulk Publish */}
+            <Dialog open={confirmBulk} onClose={() => setConfirmBulk(false)}>
+                <DialogTitle>Confirm Bulk Publish</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to publish <b>{bulkPublishCount}</b> numbers {bulkPublishSource === 'random' ? 'randomly from the entire list' : 'from the current page'}?
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setConfirmBulk(false)}>
+                        Cancel
+                    </Button>
+                    <Button onClick={confirmBulkPublish} color="success" variant="contained" disabled={publishing}>
+                        {publishing ? 'Publishing...' : 'Confirm'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

@@ -229,6 +229,78 @@ export const phoneNumberService = {
             });
             throw error;
         }
+    },
+
+    // Publish a number
+    publishNumber: async (id) => {
+        try {
+            const response = await axios.post('/api/phone-numbers/' + id + '/publish');
+            return response.data;
+        } catch (error) {
+            throw new Error(
+                error.response?.data?.details || 
+                error.response?.data?.error || 
+                'Failed to publish number. Please try again.'
+            );
+        }
+    },
+
+    // Unpublish a number
+    unpublishNumber: async (id) => {
+        try {
+            const response = await axios.post('/api/phone-numbers/' + id + '/unpublish');
+            return response.data;
+        } catch (error) {
+            throw new Error(
+                error.response?.data?.details || 
+                error.response?.data?.error || 
+                'Failed to unpublish number. Please try again.'
+            );
+        }
+    },
+
+    // Bulk publish numbers
+    bulkPublishNumbers: async (data) => {
+        try {
+            const response = await axios.post('/api/phone-numbers/bulk-publish', data);
+            return response.data;
+        } catch (error) {
+            throw new Error(
+                error.response?.data?.details || 
+                error.response?.data?.error || 
+                'Failed to bulk publish numbers. Please try again.'
+            );
+        }
+    },
+
+    // Get published numbers for management page
+    getPublishedNumbers: async (page = 1, limit = 100) => {
+        try {
+            const response = await axios.get('/api/phone-numbers/published', {
+                params: { page, limit }
+            });
+            return response.data;
+        } catch (error) {
+            throw new Error(
+                error.response?.data?.details || 
+                error.response?.data?.error || 
+                'Failed to fetch published numbers. Please try again.'
+            );
+        }
+    },
+
+    // Get published numbers for iframe (public endpoint)
+    getPublicPublishedNumbers: async () => {
+        try {
+            const response = await axios.get('/api/phone-numbers/public/published');
+            return response.data;
+        } catch (error) {
+            throw new Error(
+                error.response?.data?.details || 
+                error.response?.data?.error || 
+                'Failed to fetch published numbers. Please try again.'
+            );
+        }
     }
 };
 

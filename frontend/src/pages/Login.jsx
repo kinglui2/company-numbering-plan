@@ -18,9 +18,7 @@ function Login() {
         setLoading(true);
 
         try {
-            console.log('Attempting login with username:', username);
             const user = await login(username, password);
-            console.log('Login successful, user:', user);
             if (user.role === 'manager') {
                 navigate('/manager');
             } else {

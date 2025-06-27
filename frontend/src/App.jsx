@@ -7,6 +7,7 @@ import AllNumbers from './pages/AllNumbers';
 import CooloffNumbers from './pages/CooloffNumbers';
 import AssignedNumbers from './pages/AssignedNumbers';
 import MissingData from './pages/MissingData';
+import PublishedNumbers from './pages/PublishedNumbers';
 import PhoneNumberDetails from './pages/PhoneNumberDetails';
 import AvailableNumbers from './pages/AvailableNumbers';
 import Assign from './pages/Assign';
@@ -36,6 +37,7 @@ function App() {
                         <Route path="/numbers/cooloff" element={<Layout><CooloffNumbers /></Layout>} />
                         <Route path="/numbers/assigned" element={<Layout><AssignedNumbers /></Layout>} />
                         <Route path="/numbers/missing" element={<Layout><MissingData /></Layout>} />
+                        <Route path="/numbers/published" element={<Layout><PublishedNumbers /></Layout>} />
                         <Route path="/numbers/:id" element={<Layout><PhoneNumberDetails /></Layout>} />
                         <Route path="/assign" element={<Layout><Assign /></Layout>} />
                         

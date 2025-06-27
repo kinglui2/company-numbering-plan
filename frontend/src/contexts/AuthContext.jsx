@@ -27,16 +27,9 @@ export function AuthProvider({ children }) {
 
     const fetchUser = async () => {
         try {
-            console.log('Fetching user data...');
             const response = await axios.get('/api/auth/me');
-            console.log('User data received:', response.data);
             setUser(response.data);
         } catch (error) {
-            console.error('Error fetching user:', {
-                message: error.message,
-                response: error.response?.data,
-                status: error.response?.status
-            });
             logout();
         } finally {
             setLoading(false);
@@ -45,12 +38,10 @@ export function AuthProvider({ children }) {
 
     const login = async (username, password) => {
         try {
-            console.log('Sending login request to:', '/api/auth/login');
             const response = await axios.post('/api/auth/login', {
                 username,
                 password
             });
-            console.log('Login response received:', response.data);
 
             const { token, user } = response.data;
             localStorage.setItem('token', token);
@@ -58,16 +49,6 @@ export function AuthProvider({ children }) {
             setUser(user);
             return user;
         } catch (error) {
-            console.error('Login request failed:', {
-                message: error.message,
-                response: error.response?.data,
-                status: error.response?.status,
-                config: {
-                    url: error.config?.url,
-                    method: error.config?.method,
-                    headers: error.config?.headers
-                }
-            });
             throw error;
         }
     };

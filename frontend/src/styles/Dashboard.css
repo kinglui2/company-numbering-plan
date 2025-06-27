@@ -62,7 +62,7 @@
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 20px;
-    flex: 1;
+    align-items: start;
 }
 
 .stat-card {
@@ -74,6 +74,9 @@
     align-items: center;
     gap: 16px;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    min-height: 120px;
+    max-height: 140px;
+    height: 100%;
 }
 
 .stat-card:hover {

@@ -10,7 +10,8 @@ import {
     FaCog, 
     FaSignOutAlt,
     FaChevronLeft,
-    FaChevronRight
+    FaChevronRight,
+    FaGlobe
 } from 'react-icons/fa';
 
 function Sidebar() {
@@ -40,7 +41,8 @@ function Sidebar() {
                 { path: '/numbers/available', label: 'Available Numbers' },
                 { path: '/numbers/cooloff', label: 'Cooloff Numbers' },
                 { path: '/numbers/assigned', label: 'Assigned/Unassigned' },
-                { path: '/numbers/missing', label: 'Missing Data' }
+                { path: '/numbers/missing', label: 'Missing Data' },
+                { path: '/numbers/published', label: 'Published Numbers' }
             ]
         },
         { path: '/assign', icon: <FaUserPlus />, label: 'Assign' }

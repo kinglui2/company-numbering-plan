@@ -256,6 +256,8 @@ const phoneNumberController = {
                     assignment_date,
                     unassignment_date,
                     subscriber_number,
+                    is_published,
+                    published_date,
                     CASE 
                         WHEN unassignment_date IS NULL THEN 'Never Assigned'
                         ELSE CONCAT(DATEDIFF(NOW(), unassignment_date), ' days since unassignment')
@@ -519,54 +521,25 @@ const phoneNumberController = {
         }
     },
 
-    // Get numbers with missing data
+    // Get missing data numbers
     async getMissingDataNumbers(req, res) {
         try {
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 100;
-            const type = req.query.type || 'all';
             const offset = (page - 1) * limit;
 
-            // Base condition for assigned numbers
-            const baseCondition = "status = 'assigned'";
-
-            // Build the WHERE clause based on missing data type
-            let whereClause = '';
-            switch (type) {
-                case 'subscriber':
-                    whereClause = `${baseCondition} AND (subscriber_name IS NULL OR subscriber_name = "")`;
-                    break;
-                case 'company':
-                    whereClause = `${baseCondition} AND (company_name IS NULL OR company_name = "")`;
-                    break;
-                case 'gateway':
-                    whereClause = `${baseCondition} AND (gateway IS NULL OR gateway = "")`;
-                    break;
-                case 'gateway_username':
-                    whereClause = `${baseCondition} AND (gateway_username IS NULL OR gateway_username = "")`;
-                    break;
-                default: // 'all'
-                    whereClause = `${baseCondition} AND (
-                        (subscriber_name IS NULL OR subscriber_name = "") OR 
-                        (company_name IS NULL OR company_name = "") OR 
-                        (gateway IS NULL OR gateway = "") OR 
-                        (gateway_username IS NULL OR gateway_username = "")
-                    )`;
-            }
-
-            // Get total counts for stats
-            const statsQuery = `
-                SELECT 
-                    COUNT(*) as totalMissing,
-                    SUM(CASE WHEN subscriber_name IS NULL OR subscriber_name = "" THEN 1 ELSE 0 END) as missingSubscriber,
-                    SUM(CASE WHEN company_name IS NULL OR company_name = "" THEN 1 ELSE 0 END) as missingCompany,
-                    SUM(CASE WHEN gateway IS NULL OR gateway = "" THEN 1 ELSE 0 END) as missingGateway,
-                    SUM(CASE WHEN gateway_username IS NULL OR gateway_username = "" THEN 1 ELSE 0 END) as missingGatewayUsername
-                FROM phone_numbers
-                WHERE ${whereClause}
+            // Get total count
+            const countQuery = `
+                SELECT COUNT(*) as total 
+                FROM phone_numbers 
+                WHERE (subscriber_name IS NULL OR subscriber_name = '') 
+                OR (company_name IS NULL OR company_name = '') 
+                OR (gateway IS NULL OR gateway = '')
             `;
+            const [countResult] = await pool.query(countQuery);
+            const total = countResult[0].total;
 
-            // Get paginated numbers with missing data
+            // Get numbers with missing data
             const numbersQuery = `
                 SELECT 
                     id,
@@ -576,37 +549,243 @@ const phoneNumberController = {
                         network_code,
                         LPAD(subscriber_number, 4, '0')
                     ) as full_number,
+                    status,
+                    is_golden,
                     subscriber_name,
                     company_name,
                     gateway,
                     gateway_username,
-                    status,
                     assignment_date
-                FROM phone_numbers
-                WHERE ${whereClause}
+                FROM phone_numbers 
+                WHERE (subscriber_name IS NULL OR subscriber_name = '') 
+                OR (company_name IS NULL OR company_name = '') 
+                OR (gateway IS NULL OR gateway = '')
                 ORDER BY full_number
                 LIMIT ? OFFSET ?
             `;
-
-            const [statsResult] = await pool.query(statsQuery);
             const [numbers] = await pool.query(numbersQuery, [limit, offset]);
-            const stats = statsResult[0];
 
             res.json({
                 numbers,
-                total: stats.totalMissing,
-                page,
-                limit,
-                totalPages: Math.ceil(stats.totalMissing / limit),
-                stats
+                pagination: {
+                    total,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(total / limit)
+                }
             });
         } catch (error) {
             res.status(500).json({ 
-                error: 'Failed to fetch numbers with missing data',
+                error: 'Failed to fetch missing data numbers',
                 details: error.message
             });
         }
-    }
+    },
+
+    // Publish a number
+    async publishNumber(req, res) {
+        try {
+            const { id } = req.params;
+
+            if (!req.user) {
+                return res.status(401).json({ 
+                    error: 'Authentication required',
+                    message: 'Please log in to publish numbers'
+                });
+            }
+
+            // Check if number exists and is available
+            const number = await PhoneNumber.findById(id);
+            if (!number) {
+                return res.status(404).json({ error: 'Phone number not found' });
+            }
+
+            // Check if number is already published
+            if (number.is_published) {
+                return res.status(400).json({ error: 'Number is already published' });
+            }
+
+            const success = await PhoneNumber.publishNumber(id, req.user.id);
+            if (!success) {
+                return res.status(500).json({ error: 'Failed to publish number' });
+            }
+
+            // Log the publish activity
+            await UserActivity.create({
+                user_id: req.user.id,
+                action_type: 'publish',
+                target_type: 'phone_number',
+                target_id: number.full_number,
+                old_value: { is_published: false },
+                new_value: { is_published: true },
+                ip_address: req.ip
+            });
+
+            res.json({ 
+                success: true,
+                message: 'Number published successfully',
+                data: { id, full_number: number.full_number }
+            });
+        } catch (error) {
+            res.status(500).json({ 
+                error: 'Failed to publish number',
+                details: error.message
+            });
+        }
+    },
+
+    // Unpublish a number
+    async unpublishNumber(req, res) {
+        try {
+            const { id } = req.params;
+
+            if (!req.user) {
+                return res.status(401).json({ 
+                    error: 'Authentication required',
+                    message: 'Please log in to unpublish numbers'
+                });
+            }
+
+            // Check if number exists
+            const number = await PhoneNumber.findById(id);
+            if (!number) {
+                return res.status(404).json({ error: 'Phone number not found' });
+            }
+
+            // Check if number is published
+            if (!number.is_published) {
+                return res.status(400).json({ error: 'Number is not published' });
+            }
+
+            const success = await PhoneNumber.unpublishNumber(id);
+            if (!success) {
+                return res.status(500).json({ error: 'Failed to unpublish number' });
+            }
+
+            // Log the unpublish activity
+            await UserActivity.create({
+                user_id: req.user.id,
+                action_type: 'unpublish',
+                target_type: 'phone_number',
+                target_id: number.full_number,
+                old_value: { is_published: true },
+                new_value: { is_published: false },
+                ip_address: req.ip
+            });
+
+            res.json({ 
+                success: true,
+                message: 'Number unpublished successfully',
+                data: { id, full_number: number.full_number }
+            });
+        } catch (error) {
+            res.status(500).json({ 
+                error: 'Failed to unpublish number',
+                details: error.message
+            });
+        }
+    },
+
+    // Bulk publish numbers
+    async bulkPublishNumbers(req, res) {
+        try {
+            const { count, source, numberIds } = req.body;
+
+            if (!req.user) {
+                return res.status(401).json({ 
+                    error: 'Authentication required',
+                    message: 'Please log in to publish numbers'
+                });
+            }
+
+            let numbersToPublish = [];
+
+            if (source === 'random') {
+                // Get random unpublished available numbers
+                numbersToPublish = await PhoneNumber.getRandomUnpublishedNumbers(count);
+            } else if (source === 'current_page' && numberIds) {
+                // Use provided number IDs from current page
+                const [rows] = await pool.query(`
+                    SELECT 
+                        id,
+                        CONCAT(
+                            national_code,
+                            area_code,
+                            network_code,
+                            LPAD(subscriber_number, 4, '0')
+                        ) as full_number,
+                        is_golden,
+                        gateway
+                    FROM phone_numbers 
+                    WHERE id IN (${numberIds.map(() => '?').join(',')})
+                    AND is_published = FALSE
+                `, numberIds);
+                numbersToPublish = rows;
+            } else {
+                return res.status(400).json({ error: 'Invalid source or missing numberIds' });
+            }
+
+            if (numbersToPublish.length === 0) {
+                return res.status(400).json({ error: 'No numbers available to publish' });
+            }
+
+            const numberIdsToPublish = numbersToPublish.map(n => n.id);
+            const publishedCount = await PhoneNumber.bulkPublishNumbers(numberIdsToPublish, req.user.id);
+
+            // Log the bulk publish activity
+            await UserActivity.create({
+                user_id: req.user.id,
+                action_type: 'bulk_publish',
+                target_type: 'phone_numbers',
+                target_id: `bulk:${numberIdsToPublish.length}`,
+                old_value: { is_published: false },
+                new_value: { is_published: true, count: publishedCount, ids: numberIdsToPublish },
+                ip_address: req.ip
+            });
+
+            res.json({ 
+                success: true,
+                message: `Successfully published ${publishedCount} numbers`,
+                data: { 
+                    published_count: publishedCount,
+                    numbers: numbersToPublish
+                }
+            });
+        } catch (error) {
+            res.status(500).json({ 
+                error: 'Failed to publish numbers',
+                details: error.message
+            });
+        }
+    },
+
+    // Get published numbers for iframe (public endpoint)
+    async getPublishedNumbers(req, res) {
+        try {
+            const numbers = await PhoneNumber.getPublishedNumbers();
+            res.json({ numbers });
+        } catch (error) {
+            res.status(500).json({ 
+                error: 'Failed to fetch published numbers',
+                details: error.message
+            });
+        }
+    },
+
+    // Get published numbers for management page (paginated)
+    async getPublishedNumbersPaginated(req, res) {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 100;
+            const result = await PhoneNumber.getPublishedNumbersPaginated(page, limit);
+            res.json(result);
+        } catch (error) {
+            res.status(500).json({ 
+                error: 'Failed to fetch published numbers',
+                details: error.message
+            });
+        }
+    },
 };
 
-module.exports = phoneNumberController; 
+module.exports = phoneNumberController;

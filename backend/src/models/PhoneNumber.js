@@ -347,6 +347,167 @@ class PhoneNumber {
             throw error;
         }
     }
+
+    // Publish a number
+    static async publishNumber(id, publishedBy) {
+        try {
+            const [result] = await db.query(
+                `UPDATE phone_numbers 
+                SET is_published = TRUE, 
+                    published_date = NOW(), 
+                    published_by = ? 
+                WHERE id = ?`,
+                [publishedBy, id]
+            );
+            return result.affectedRows > 0;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Unpublish a number
+    static async unpublishNumber(id) {
+        try {
+            const [result] = await db.query(
+                `UPDATE phone_numbers 
+                SET is_published = FALSE, 
+                    published_date = NULL, 
+                    published_by = NULL 
+                WHERE id = ?`,
+                [id]
+            );
+            return result.affectedRows > 0;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Bulk publish numbers
+    static async bulkPublishNumbers(numberIds, publishedBy) {
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // Update all numbers at once
+            const placeholders = numberIds.map(() => '?').join(',');
+            const [result] = await connection.query(
+                `UPDATE phone_numbers 
+                SET is_published = TRUE, 
+                    published_date = NOW(), 
+                    published_by = ? 
+                WHERE id IN (${placeholders})`,
+                [publishedBy, ...numberIds]
+            );
+
+            await connection.commit();
+            return result.affectedRows;
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    // Get published numbers for iframe
+    static async getPublishedNumbers() {
+        try {
+            const [rows] = await db.query(`
+                SELECT 
+                    id,
+                    CONCAT(
+                        national_code,
+                        area_code,
+                        network_code,
+                        LPAD(subscriber_number, 4, '0')
+                    ) as full_number,
+                    is_golden,
+                    gateway,
+                    published_date
+                FROM phone_numbers 
+                WHERE is_published = TRUE
+                ORDER BY published_date DESC
+            `);
+            return rows;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Get published numbers with pagination for management page
+    static async getPublishedNumbersPaginated(page = 1, limit = 100) {
+        try {
+            const offset = (page - 1) * limit;
+
+            // Get total count
+            const [countResult] = await db.query(`
+                SELECT COUNT(*) as total 
+                FROM phone_numbers 
+                WHERE is_published = TRUE
+            `);
+            const total = countResult[0].total;
+
+            // Get paginated published numbers
+            const [rows] = await db.query(`
+                SELECT 
+                    p.id,
+                    CONCAT(
+                        p.national_code,
+                        p.area_code,
+                        p.network_code,
+                        LPAD(p.subscriber_number, 4, '0')
+                    ) as full_number,
+                    p.is_golden,
+                    p.gateway,
+                    p.published_date,
+                    u.username as published_by_username
+                FROM phone_numbers p
+                LEFT JOIN users u ON p.published_by = u.id
+                WHERE p.is_published = TRUE
+                ORDER BY p.published_date DESC
+                LIMIT ? OFFSET ?
+            `, [limit, offset]);
+
+            return {
+                numbers: rows,
+                pagination: {
+                    total,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(total / limit)
+                }
+            };
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Get random unpublished available numbers for bulk publish
+    static async getRandomUnpublishedNumbers(count) {
+        try {
+            const [rows] = await db.query(`
+                SELECT 
+                    id,
+                    CONCAT(
+                        national_code,
+                        area_code,
+                        network_code,
+                        LPAD(subscriber_number, 4, '0')
+                    ) as full_number,
+                    is_golden,
+                    gateway
+                FROM phone_numbers 
+                WHERE (status = 'unassigned' OR 
+                       (status = 'cooloff' AND unassignment_date <= DATE_SUB(NOW(), INTERVAL 90 DAY)))
+                AND is_published = FALSE
+                ORDER BY RAND()
+                LIMIT ?
+            `, [count]);
+            return rows;
+        } catch (error) {
+            throw error;
+        }
+    }
 }
 
 module.exports = PhoneNumber; 
