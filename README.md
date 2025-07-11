@@ -91,6 +91,16 @@ project-root/
 - Import and export functionality for CSV/Excel
 - Audit logs for all changes made via the app
 
+## 📋 Release Notes
+
+For detailed information about features, bug fixes, and changes in each version, see our [CHANGELOG.md](./CHANGELOG.md).
+
+### Current Version: 1.0.0
+- Initial release with core numbering plan management functionality
+- Complete MERN stack implementation with MySQL database
+- User authentication and authorization system
+- Assignment and unassignment workflows with 90-day cool-off period
+
 ---
 
 > This system is designed to improve operational efficiency, reduce manual errors, and provide a reliable structure for DID management within telecom environments.
